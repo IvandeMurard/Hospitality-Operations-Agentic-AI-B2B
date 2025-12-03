@@ -64,6 +64,15 @@ iterativement.
    - Call staff last minute (souvent refuse)
    - OU turn away walk-ins (revenue loss)
 
+**Note:** Même si planning base est fait mensuellement lors de prise de poste,
+les ajustements sont fréquents (2-3x/semaine) en réponse à :
+- Events imprévus (concerts annoncés, conférences)
+- Weather changes (pluie = plus indoor dining)
+- Absences staff (maladie, urgences)
+- Walk-ins unexpected (groupe large)
+
+Agent cible ces **ajustements fréquents**, pas planning initial.
+
 **Métriques du problème:**
 - Time wasted: 5-8h/semaine (planning + corrections + stress mental)
 - Error rate: 30% des predictions incorrectes (industry baseline)
