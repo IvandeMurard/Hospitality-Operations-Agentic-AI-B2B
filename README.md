@@ -50,6 +50,14 @@ Restaurant managers spend **5-8h/week** on staffing planning with **70% accuracy
 - 📋 Figma mockups (next)
 - 📋 Architecture doc (next)
 
+## 📚 Documentation
+
+- **[Problem Statement](docs/Problem_Statement.md)** - Staffing forecasting problem, persona, metrics
+- **[MVP Scope](docs/MVP_SCOPE.md)** - 5 core features, 43h effort, IN/OUT scope
+- **[Technical Architecture](docs/ARCHITECTURE.md)** - System design, APIs, integrations, scalability
+- **[Cost Model](docs/Cost_Model.md)** - $6.65/month MVP, scale economics | [Google Sheet](https://docs.google.com/spreadsheets/d/1K2AZVUdOeTxWzZQb5FaFIbh_nJXkuGvjTrcNk0Z_OPQ/edit)
+- **[Phase 0 Review](docs/PHASE_0_REVIEW.md)** - Validation checklist, Go/No-Go decision
+
 ## 👨‍💻 Author
 
 **Ivan de Murard**  
