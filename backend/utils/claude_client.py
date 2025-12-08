@@ -11,7 +11,14 @@ load_dotenv()
 
 class ClaudeClient:
     def __init__(self):
-        self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "ANTHROPIC_API_KEY environment variable is not set. "
+                "Please create a .env file with your API key. "
+                "See .env.example for reference."
+            )
+        self.client = Anthropic(api_key=api_key)
         self.model = "claude-3-5-sonnet-20241022"
     
     async def generate_prediction(self, prompt: str) -> str:

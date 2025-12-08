@@ -20,9 +20,19 @@ class QdrantManager:
                 url=self.url,
                 api_key=self.api_key
             )
+            self.mode = "cloud"
         else:
             # Use in-memory for local development
+            # Warn if production but keys are missing
+            if os.getenv("ENVIRONMENT") == "production":
+                import warnings
+                warnings.warn(
+                    "QDRANT_URL and QDRANT_API_KEY not set in production. "
+                    "Using in-memory database. This is not recommended for production. "
+                    "See .env.example for reference."
+                )
             self.client = QdrantClient(":memory:")
+            self.mode = "memory"
     
     def test_connection(self) -> dict:
         """
