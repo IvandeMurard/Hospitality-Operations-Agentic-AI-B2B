@@ -46,7 +46,7 @@ class QdrantManager:
                 "status": "success",
                 "message": "Qdrant connected successfully",
                 "collections": len(collections.collections),
-                "mode": "cloud" if self.url else "memory"
+                "mode": self.mode
             }
         except Exception as e:
             return {
