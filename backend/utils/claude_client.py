@@ -59,3 +59,24 @@ class ClaudeClient:
                 "status": "error",
                 "message": str(e)
             }
+    
+    async def __aenter__(self):
+        """Async context manager entry"""
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit - closes HTTP connections"""
+        await self.close()
+    
+    async def close(self):
+        """
+        Close the underlying HTTP client connections
+        """
+        # AsyncAnthropic uses httpx.AsyncClient internally
+        # Access the underlying client and close it
+        if hasattr(self.client, '_client') and hasattr(self.client._client, 'aclose'):
+            await self.client._client.aclose()
+        elif hasattr(self.client, 'close'):
+            await self.client.close()
+        elif hasattr(self.client, 'aclose'):
+            await self.client.aclose()

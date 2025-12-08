@@ -37,8 +37,8 @@ async def health():
 async def test_claude():
     """Test Claude API connection"""
     from utils.claude_client import ClaudeClient
-    client = ClaudeClient()
-    return await client.test_connection()
+    async with ClaudeClient() as client:
+        return await client.test_connection()
 
 @app.get("/test/qdrant")
 async def test_qdrant():
