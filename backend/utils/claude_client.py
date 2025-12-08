@@ -4,7 +4,7 @@ Handles all interactions with Anthropic's Claude API
 """
 
 import os
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,7 +18,7 @@ class ClaudeClient:
                 "Please create a .env file with your API key. "
                 "See .env.example for reference."
             )
-        self.client = Anthropic(api_key=api_key)
+        self.client = AsyncAnthropic(api_key=api_key)
         self.model = "claude-3-5-sonnet-20241022"
     
     async def generate_prediction(self, prompt: str) -> str:
@@ -26,7 +26,7 @@ class ClaudeClient:
         Generate a prediction using Claude
         """
         try:
-            message = self.client.messages.create(
+            message = await self.client.messages.create(
                 model=self.model,
                 max_tokens=1024,
                 messages=[
@@ -37,12 +37,12 @@ class ClaudeClient:
         except Exception as e:
             raise Exception(f"Claude API error: {str(e)}")
     
-    def test_connection(self) -> dict:
+    async def test_connection(self) -> dict:
         """
         Test Claude API connection
         """
         try:
-            message = self.client.messages.create(
+            message = await self.client.messages.create(
                 model=self.model,
                 max_tokens=100,
                 messages=[

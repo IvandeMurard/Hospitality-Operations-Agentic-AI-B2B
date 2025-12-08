@@ -38,14 +38,14 @@ async def test_claude():
     """Test Claude API connection"""
     from utils.claude_client import ClaudeClient
     client = ClaudeClient()
-    return client.test_connection()
+    return await client.test_connection()
 
 @app.get("/test/qdrant")
 async def test_qdrant():
     """Test Qdrant connection"""
     from utils.qdrant_client import QdrantManager
     client = QdrantManager()
-    return client.test_connection()
+    return await client.test_connection()
 
 # TODO Phase 1: Implement endpoints
 # - POST /predict

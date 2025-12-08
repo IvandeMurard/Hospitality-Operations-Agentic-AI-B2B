@@ -4,6 +4,7 @@ Handles pattern storage and similarity search
 """
 
 import os
+import asyncio
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from dotenv import load_dotenv
@@ -34,12 +35,13 @@ class QdrantManager:
             self.client = QdrantClient(":memory:")
             self.mode = "memory"
     
-    def test_connection(self) -> dict:
+    async def test_connection(self) -> dict:
         """
-        Test Qdrant connection
+        Test Qdrant connection (async wrapper for synchronous client)
         """
         try:
-            collections = self.client.get_collections()
+            # Run synchronous operation in thread pool to avoid blocking
+            collections = await asyncio.to_thread(self.client.get_collections)
             return {
                 "status": "success",
                 "message": "Qdrant connected successfully",
