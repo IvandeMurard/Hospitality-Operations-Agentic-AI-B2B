@@ -32,12 +32,6 @@ Restaurant managers spend **5-8h/week** on staffing planning with **70% accuracy
 - Supabase (PostgreSQL)
 - Redis (session state)
 
-## 📈 Cost Model
-
-- **MVP**: $6.65/restaurant/month
-- **Scale (500 restos)**: $1.14/restaurant/month
-- [Full cost model →](https://docs.google.com/spreadsheets/d/1K2AZVUdOeTxWzZQb5FaFIbh_nJXkuGvjTrcNk0Z_OPQ/edit?usp=sharing)
-
 ## 🚀 Status
 
 ✅ **Phase 0: Strategic Preparation** (Complete - 10.5h)  
@@ -58,4 +52,4 @@ Restaurant managers spend **5-8h/week** on staffing planning with **70% accuracy
 
 ---
 
-**Built for Mews PM application** • Demonstrates AI product management, agentic experience design, and hospitality domain expertise
+**Built for AI product management, agentic experience design, and hospitality domain expertise
