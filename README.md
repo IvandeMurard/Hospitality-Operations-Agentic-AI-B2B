@@ -1,6 +1,6 @@
 # F&B Operations Agent - MVP
 
-**Portfolio case study demonstrating AI Product Management expertise**
+**Portfolio case study to gain AI product management and agentic design expertise**
 
 ## 📊 Problem
 
@@ -51,5 +51,3 @@ Restaurant managers spend **5-8h/week** on staffing planning with **70% accuracy
 [Portfolio](https://ivandemurard.lovable.app) • [LinkedIn](https://linkedin.com/in/ivandemurard)
 
 ---
-
-**Built for AI product management, agentic experience design, and hospitality domain expertise
