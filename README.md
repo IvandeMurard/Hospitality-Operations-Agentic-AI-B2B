@@ -28,8 +28,6 @@ Core principle: **Augmented hospitality** – AI handles forecasting, data stitc
 
 ## 📋 Project Roadmap
 
-**Current priorities and strategic direction:** [ROADMAP_NOW_NEXT_LATER.md](docs/ROADMAP_NOW_NEXT_LATER.md)
-
 Updated weekly (Monday 9am) based on:
 - Industry intelligence (Perplexity veille)
 - Sprint progress and blockers
@@ -73,7 +71,6 @@ FastAPI Backend
 - **Smart Prediction Engine**
   - Weighted average from 3 similar historical patterns
   - 91% average confidence scores
-  - Covers range: 120-165 typical
 
 - **Rich Context Analysis**
   - Events: Concerts, sports, conferences, theater
@@ -113,61 +110,12 @@ FastAPI Backend
 
 ---
 
-## 📚 Documentation
-
-**Phase 0 (Strategic Foundation):**
-- [Problem Statement](docs/Problem_Statement.md)
-- [MVP Scope](docs/MVP_SCOPE.md)
-- [Cost Model](docs/Cost_Model.md)
-- [Architecture](docs/ARCHITECTURE.md) (12K+ words)
-- [Phase 0 Review](docs/PHASE_0_REVIEW.md)
-
-**Phase 1 (Backend API):**
-- [API Examples](docs/API_EXAMPLES.md)
-- [Development Notes](docs/DEVELOPMENT_NOTES.md)
-- [Roadmap](docs/ROADMAP_NOW_NEXT_LATER.md) (updated weekly)
-
-**Deployment:**
-- [Deployment Guide](docs/DEPLOYMENT.md) (to create)
-
----
-
 ## 💡 Strategic Context
 
-**Target Audience:** Mews Product Manager role application
-
-**Key Differentiators:**
-1. **Domain Expertise:** Former restaurant server (understands operations)
-2. **Architecture:** Agentic-first approach (vs API-first competitors)
-3. **Explainability:** Transparent reasoning (EU AI Act compliant)
-4. **Focus:** Operations-driven (not just analytics dashboards)
-
 **Why This Project?**
-- Hospitality = 
+- Hospitality = Former restaurant waiter, barman, barista, passion for the sector
 - Agentic AI = emerging paradigm (first-mover advantage)
 - Operations focus = real manager pain (not toy project)
-
----
-
-## 📈 Metrics & Progress
-
-**Phase 0 (Complete - Dec 2025):**
-- Time: 10.5h
-- Output: 6 documents, 4 Figma screens, ~25K words
-- Validation: Problem validated, Cost model defined
-
-**Phase 1 (64% Complete - Jan 2026):**
-- Time: 4.5h (Hours 1-2 complete)
-- Output: Backend API, Claude integration, 400+ LOC
-- Progress: 7/11 issues done
-- **Blocker:** IVA-29 (contextual patterns bug)
-
-**Milestones:**
-- ✅ Dec 15: Phase 0 complete (GO decision)
-- ✅ Jan 7: Backend setup + Claude reasoning working
-- 🎯 Jan 12: Critical bug resolved (IVA-29)
-- 🎯 Jan 19: Staff Recommender complete
-- 🎯 Jan 31: Phase 1 MVP deployed + documented
 
 ---
 
@@ -179,7 +127,7 @@ FastAPI Backend
 
 **Figma Mockups:** [Link to Figma] (to add)
 
-**Live Demo:** (Phase 1 deployment pending)
+**Live Demo:** coming soon
 
 ---
 
