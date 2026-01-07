@@ -60,7 +60,7 @@ FastAPI Backend
 
 **Tech Stack:**
 - **Backend:** Python 3.13, FastAPI, Uvicorn
-- **AI:** Claude Haiku 3.5 (reasoning), Qdrant (vector DB)
+- **AI:** Claude Sonnet 4.1 (reasoning), Qdrant (vector DB)
 - **Data:** Mock patterns (Phase 1), Real patterns (Phase 2)
 - **Deploy:** Render.com (planned)
 
