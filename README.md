@@ -11,7 +11,7 @@
 
 Build an AI **decision engine** for hotel F&B operations that:
 
-- Connects to existing systems (PMS, RMS, POS, WFM) instead of replacing them  
+- Connects to existing systems (PMS, RMS, POS, WFM). Glue, not replacement.
 - Predicts demand (covers, sales, activity) using:
   - External context: events, weather, holidays, ...,
   - Historical patterns: vector search with Qdrant  
