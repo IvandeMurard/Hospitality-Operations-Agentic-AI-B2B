@@ -34,6 +34,7 @@ Updated weekly (Monday 9am) based on:
 - Industry intelligence (Perplexity veille)
 - Sprint progress and blockers
 - Strategic pivots and learnings
+- Meetings
 
 **Quick status:**
 - 🔥 **NOW:** Fix contextual patterns bug (IVA-29) - Critical blocker
