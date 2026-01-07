@@ -28,7 +28,7 @@ Core principle: **Augmented hospitality** – AI handles forecasting, data stitc
 
 ## 📋 Project Roadmap
 
-Updated weekly (Monday 9am) based on:
+Context updated weekly (Monday 9am) based on:
 - Industry intelligence (Perplexity veille)
 - Sprint progress and blockers
 - Strategic pivots and learnings
