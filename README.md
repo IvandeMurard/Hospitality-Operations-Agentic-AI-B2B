@@ -9,7 +9,7 @@
 
 ## 🎯 Project Vision
 
-Build an AI **decision engine** for hotel F&B operations that:
+F&B Operations Agent (intelligence layer for staffing predictions):
 
 - Connects to existing systems (PMS, RMS, POS, WFM). Glue, not replacement.
 - Predicts demand (covers, sales, activity) using:
