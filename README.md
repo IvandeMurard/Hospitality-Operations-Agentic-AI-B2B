@@ -5,7 +5,7 @@
 ## 📊 Problem
 
 1. Hotel & restaurant teams spend **5–8h/week** building staffing plans with **limited forecast accuracy**, instead of focusing on guests and operations.  
-2. Core systems (PMS, RMS, POS, WFM) are rarely well integrated, so revenue forecasts and staffing/inventory decisions live in silos rather than feeding each other.  
+2. Core systems (PMS, RMS, POS, WFM) are rarely well connected, so revenue forecasts and staffing/inventory decisions live in silos rather than feeding each other.  
 
 ## 🎯 Project Vision
 
@@ -30,13 +30,13 @@ Core principle: **Augmented hospitality** – AI handles forecasting, data stitc
 
 Context updated weekly (Monday 9am) based on:
 - Industry intelligence (Perplexity veille)
-- Sprint progress and blockers
+- Sprint progress made and blockers
 - Strategic pivots and learnings
-- Meetings
+- Meetings and continous discovery
 
 **Quick status:**
 - 🔥 **NOW:** Fix contextual patterns bug (IVA-29) - Critical blocker
-- ⏭️ **NEXT:** Complete MVP (Staff Recommender, tests, deploy, docs)
+- ⏭️ **NEXT:** Finish MVP (Staff Recommender, tests, deploy, docs)
 - 📅 **LATER:** Phase 2 integrations (PMS, real APIs, Qdrant search)
 
 ---
@@ -61,6 +61,8 @@ FastAPI Backend
 - **AI:** Claude Sonnet 4.1 (reasoning), Qdrant (vector DB)
 - **Data:** Mock patterns (Phase 1), Real patterns (Phase 2)
 - **Deploy:** Render.com (planned)
+- **Roadmap:** Linear
+- **Documentation:** Obsidian
 
 ---
 
