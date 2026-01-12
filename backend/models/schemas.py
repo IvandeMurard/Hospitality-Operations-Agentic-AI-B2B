@@ -4,7 +4,7 @@ Data schemas for F&B Operations Agent
 Pydantic models for request/response validation
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import date
 from enum import Enum
@@ -19,18 +19,19 @@ class ServiceType(str, Enum):
 
 class PredictionRequest(BaseModel):
     """Request model for prediction endpoint"""
-    restaurant_id: str = Field(..., description="Restaurant identifier")
-    service_date: date = Field(..., description="Date of service (YYYY-MM-DD)")
-    service_type: ServiceType = Field(..., description="Type of service")
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "restaurant_id": "resto_123",
                 "service_date": "2024-12-15",
                 "service_type": "dinner"
             }
         }
+    )
+    
+    restaurant_id: str = Field(..., description="Restaurant identifier")
+    service_date: date = Field(..., description="Date of service (YYYY-MM-DD)")
+    service_type: ServiceType = Field(..., description="Type of service")
 
 
 class Pattern(BaseModel):
@@ -63,21 +64,14 @@ class StaffRecommendation(BaseModel):
     servers: StaffDelta
     hosts: StaffDelta
     kitchen: StaffDelta
+    rationale: str
+    covers_per_staff: float
 
 
 class PredictionResponse(BaseModel):
     """Response model for prediction endpoint"""
-    prediction_id: str
-    service_date: date
-    service_type: ServiceType
-    predicted_covers: int
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    reasoning: Reasoning
-    staff_recommendation: StaffRecommendation
-    created_at: str
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "prediction_id": "pred_abc123",
                 "service_date": "2024-12-15",
@@ -92,8 +86,20 @@ class PredictionResponse(BaseModel):
                 "staff_recommendation": {
                     "servers": {"recommended": 8, "usual": 7, "delta": 1},
                     "hosts": {"recommended": 2, "usual": 2, "delta": 0},
-                    "kitchen": {"recommended": 3, "usual": 3, "delta": 0}
+                    "kitchen": {"recommended": 3, "usual": 3, "delta": 0},
+                    "rationale": "Above average demand (145 covers). Add 1 server(s) for smooth service.",
+                    "covers_per_staff": 11.2
                 },
                 "created_at": "2024-12-02T18:00:00Z"
             }
         }
+    )
+    
+    prediction_id: str
+    service_date: date
+    service_type: ServiceType
+    predicted_covers: int
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    reasoning: Reasoning
+    staff_recommendation: StaffRecommendation
+    created_at: str

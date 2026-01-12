@@ -7,8 +7,12 @@ from typing import Dict, List
 from datetime import date
 from anthropic import AsyncAnthropic
 import os
+from dotenv import load_dotenv
 
-from models.schemas import Pattern
+# Load environment variables from .env file
+load_dotenv()
+
+from ..models.schemas import Pattern
 
 
 class ReasoningEngine:
