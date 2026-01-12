@@ -65,7 +65,8 @@ export const api = {
    */
   async root() {
     return apiRequest<{
-      message: string;
+      name: string;
+      version: string;
       status: string;
       docs: string;
     }>('/');
