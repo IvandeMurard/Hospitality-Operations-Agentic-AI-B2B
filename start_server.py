@@ -8,8 +8,8 @@ import os
 import sys
 from pathlib import Path
 
-# Load .env file
-env_file = Path(__file__).parent / "backend" / ".env"
+# Load .env file (project root, consistent with backend/main.py)
+env_file = Path(__file__).parent / ".env"
 if env_file.exists():
     print(f"Loading environment from {env_file}")
     with open(env_file, 'r', encoding='utf-8') as f:
