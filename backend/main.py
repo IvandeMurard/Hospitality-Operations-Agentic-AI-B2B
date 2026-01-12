@@ -20,9 +20,25 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 
 
-def get_debug_log_path() -> str:
-    """Get debug log path from environment or use relative path"""
+def get_debug_log_path() -> str | None:
+    """Get debug log path from environment or use relative path.
+    Returns None if file logging is disabled (for Docker/production)."""
+    if os.getenv("DISABLE_FILE_LOGGING", "").lower() in ("true", "1", "yes"):
+        return None
     return os.getenv("DEBUG_LOG_PATH", str(Path(__file__).parent.parent / "debug.log"))
+
+
+def _write_debug_log(message: str) -> None:
+    """Write to debug log file if file logging is enabled."""
+    debug_log_path = get_debug_log_path()
+    if debug_log_path is None:
+        return
+    try:
+        with open(debug_log_path, "a", encoding="utf-8") as f:
+            f.write(f"{message} - {datetime.now()}\n")
+            f.flush()
+    except Exception:
+        pass  # Silently ignore file logging errors in production
 
 """
 F&B Operations Agent - FastAPI Backend
@@ -43,38 +59,15 @@ app = FastAPI(
 async def log_requests(request, call_next):
     import sys
     import logging
-    debug_log_path = get_debug_log_path()
     
-    # Try multiple logging methods
     logger = logging.getLogger("uvicorn")
-    logger.error(f"[MIDDLEWARE] Request: {request.method} {request.url.path}")
-    sys.stderr.write(f"[MIDDLEWARE] Request: {request.method} {request.url.path}\n")
-    sys.stderr.flush()
-    
-    # Write to file with explicit error handling
-    try:
-        with open(debug_log_path, "a", encoding="utf-8") as f:
-            f.write(f"[MIDDLEWARE] Request: {request.method} {request.url.path} - {datetime.now()}\n")
-            f.flush()
-    except Exception as e:
-        logger.error(f"Error writing to debug.log: {e}")
-        sys.stderr.write(f"ERROR writing debug.log: {e}\n")
-        sys.stderr.flush()
+    logger.info(f"[MIDDLEWARE] Request: {request.method} {request.url.path}")
+    _write_debug_log(f"[MIDDLEWARE] Request: {request.method} {request.url.path}")
     
     response = await call_next(request)
     
-    logger.error(f"[MIDDLEWARE] Response: {response.status_code}")
-    sys.stderr.write(f"[MIDDLEWARE] Response: {response.status_code}\n")
-    sys.stderr.flush()
-    
-    try:
-        with open(debug_log_path, "a", encoding="utf-8") as f:
-            f.write(f"[MIDDLEWARE] Response: {response.status_code} - {datetime.now()}\n")
-            f.flush()
-    except Exception as e:
-        logger.error(f"Error writing to debug.log: {e}")
-        sys.stderr.write(f"ERROR writing debug.log: {e}\n")
-        sys.stderr.flush()
+    logger.info(f"[MIDDLEWARE] Response: {response.status_code}")
+    _write_debug_log(f"[MIDDLEWARE] Response: {response.status_code}")
     
     return response
 
@@ -142,122 +135,32 @@ async def create_prediction(request: PredictionRequest):
     Phase 1: Basic prediction (mocked data)
     Phase 2: Full integration (real patterns, APIs)
     """
-    import sys
-    sys.stderr.write("\n" + "="*100 + "\n")
-    sys.stderr.write("*** ENDPOINT /predict CALLED ***\n")
-    sys.stderr.write("="*100 + "\n")
-    sys.stderr.flush()
+    import logging
+    logger = logging.getLogger("uvicorn")
+    
     try:
-        import sys
-        import traceback
-        import logging
-        logger = logging.getLogger("uvicorn")
-        
-        log_msg = f"[MAIN] *** ENDPOINT CALLED *** Received prediction request: {request.service_date} ({request.service_type})"
-        logger.error(log_msg)
-        sys.stderr.write(f"\n{'='*80}\n")
-        sys.stderr.write(f"{log_msg}\n")
-        sys.stderr.write(f"{'='*80}\n")
-        sys.stderr.flush()
-        debug_log_path = get_debug_log_path()
-        try:
-            with open(debug_log_path, "a", encoding="utf-8") as f:
-                f.write(f"{log_msg} - {datetime.now()}\n")
-                f.flush()
-        except Exception as e:
-            logger.error(f"Error writing to debug.log: {e}")
-            sys.stderr.write(f"ERROR writing debug.log: {e}\n")
-            sys.stderr.flush()
+        logger.info(f"[PREDICT] Request: {request.service_date} ({request.service_type})")
+        _write_debug_log(f"[PREDICT] Request: {request.service_date} ({request.service_type})")
         
         # Get demand predictor
-        log_msg = "[MAIN] Getting demand predictor..."
-        logger.error(log_msg)
-        sys.stderr.write(f"{log_msg}\n")
-        sys.stderr.flush()
-        debug_log_path = get_debug_log_path()
-        try:
-            with open(debug_log_path, "a", encoding="utf-8") as f:
-                f.write(f"{log_msg} - {datetime.now()}\n")
-                f.flush()
-        except Exception as e:
-            logger.error(f"Error writing to debug.log: {e}")
-            sys.stderr.write(f"ERROR writing debug.log: {e}\n")
-            sys.stderr.flush()
-        # FORCE RELOAD MODULE - Clear cache
-        import importlib
-        import backend.agents.demand_predictor
-        importlib.reload(backend.agents.demand_predictor)
-        from backend.agents.demand_predictor import get_demand_predictor
-        
         predictor = get_demand_predictor()
-        log_msg = f"[MAIN] Got predictor instance: {type(predictor).__name__}"
-        logger.error(log_msg)
-        sys.stderr.write(f"{log_msg}\n")
-        sys.stderr.flush()
-        debug_log_path = get_debug_log_path()
-        try:
-            with open(debug_log_path, "a", encoding="utf-8") as f:
-                f.write(f"{log_msg} - {datetime.now()}\n")
-                f.flush()
-        except Exception as e:
-            logger.error(f"Error writing to debug.log: {e}")
-            sys.stderr.write(f"ERROR writing debug.log: {e}\n")
-            sys.stderr.flush()
         
         # Generate prediction
-        log_msg = "[MAIN] Calling predictor.predict()..."
-        logger.error(log_msg)
-        sys.stderr.write(f"{log_msg}\n")
-        sys.stderr.flush()
-        debug_log_path = get_debug_log_path()
-        try:
-            with open(debug_log_path, "a", encoding="utf-8") as f:
-                f.write(f"{log_msg} - {datetime.now()}\n")
-                f.flush()
-        except Exception as e:
-            logger.error(f"Error writing to debug.log: {e}")
-            sys.stderr.write(f"ERROR writing debug.log: {e}\n")
-            sys.stderr.flush()
-        try:
-            result = await predictor.predict(request)
-            print(f"[MAIN] Prediction result: {result.get('predicted_covers')} covers", file=sys.stderr, flush=True)
-            patterns_count = len(result.get('reasoning', {}).get('patterns_used', []))
-            print(f"[MAIN] Patterns in result: {patterns_count}", file=sys.stderr, flush=True)
-            if patterns_count > 0:
-                first_pattern = result.get('reasoning', {}).get('patterns_used', [])[0]
-                if hasattr(first_pattern, 'event_type'):
-                    print(f"[MAIN] First pattern: {first_pattern.event_type} - {first_pattern.actual_covers} covers", file=sys.stderr, flush=True)
-                else:
-                    print(f"[MAIN] First pattern (dict): {first_pattern.get('event_type')} - {first_pattern.get('actual_covers')} covers", file=sys.stderr, flush=True)
-        except Exception as e:
-            print(f"[MAIN] ERROR in predictor.predict(): {e}", file=sys.stderr, flush=True)
-            traceback.print_exc(file=sys.stderr)
-            raise
+        result = await predictor.predict(request)
+        logger.info(f"[PREDICT] Result: {result.get('predicted_covers')} covers")
         
         # TODO Hour 3-4: Add reasoning engine + staff recommender
         # For now, return basic structure
         
         # Extract reasoning from predictor result (now includes Claude-generated reasoning)
         reasoning_data = result.get("reasoning", {})
-        
         patterns_from_result = reasoning_data.get("patterns_used", [])
-        print(f"[MAIN] DEBUG: patterns_used from result: {len(patterns_from_result)} patterns", flush=True)
-        if patterns_from_result:
-            first_pattern = patterns_from_result[0]
-            if hasattr(first_pattern, 'event_type'):
-                print(f"[MAIN] DEBUG: First pattern object: {first_pattern.event_type} - {first_pattern.actual_covers} covers", flush=True)
-            else:
-                print(f"[MAIN] DEBUG: First pattern dict: {first_pattern.get('event_type')} - {first_pattern.get('actual_covers')} covers", flush=True)
         
         reasoning = Reasoning(
             summary=reasoning_data.get("summary", f"{int(result['confidence']*100)}% confidence"),
-            patterns_used=patterns_from_result[:3] if patterns_from_result else [],  # Top 3 patterns
+            patterns_used=patterns_from_result[:3] if patterns_from_result else [],
             confidence_factors=reasoning_data.get("confidence_factors", ["Historical patterns"])
         )
-        
-        print(f"[MAIN] DEBUG: Final reasoning.patterns_used: {len(reasoning.patterns_used)} patterns", flush=True)
-        if reasoning.patterns_used:
-            print(f"[MAIN] DEBUG: Final first pattern: {reasoning.patterns_used[0].event_type} - {reasoning.patterns_used[0].actual_covers} covers", flush=True)
         
         # Create StaffRecommendation object from dynamic calculation
         staff_data = result.get("staff_recommendation", {})
@@ -294,16 +197,12 @@ async def create_prediction(request: PredictionRequest):
         )
         
     except ValueError as e:
-        # Validation errors (422)
         error_detail = str(e).encode('utf-8', errors='replace').decode('utf-8', errors='replace')
-        print(f"[MAIN] ValueError: {error_detail}")
+        logger.warning(f"[PREDICT] ValueError: {error_detail}")
         raise HTTPException(status_code=422, detail=error_detail)
     except Exception as e:
-        # Safely encode error message to avoid encoding issues
         error_detail = str(e).encode('utf-8', errors='replace').decode('utf-8', errors='replace')
-        import traceback
-        print(f"[MAIN] Exception occurred:")
-        traceback.print_exc()
+        logger.error(f"[PREDICT] Error: {error_detail}")
         raise HTTPException(status_code=500, detail=error_detail)
 
 if __name__ == "__main__":

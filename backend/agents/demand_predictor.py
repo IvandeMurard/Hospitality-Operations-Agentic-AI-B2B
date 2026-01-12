@@ -19,9 +19,27 @@ from ..models.schemas import (
 from .reasoning_engine import get_reasoning_engine
 
 
-def get_debug_log_path() -> str:
-    """Get debug log path from environment or use relative path"""
+def get_debug_log_path() -> str | None:
+    """Get debug log path from environment or use relative path.
+    Returns None if file logging is disabled (for Docker/production)."""
+    if os.getenv("DISABLE_FILE_LOGGING", "").lower() in ("true", "1", "yes"):
+        return None
     return os.getenv("DEBUG_LOG_PATH", str(Path(__file__).parent.parent.parent / "debug.log"))
+
+
+def _write_debug_log(message: str) -> None:
+    """Write to debug log file if file logging is enabled."""
+    debug_log_path = get_debug_log_path()
+    if debug_log_path is None:
+        return
+    try:
+        with open(debug_log_path, "a", encoding="utf-8") as f:
+            f.write(f"{message} - {datetime.now()}\n")
+            f.flush()
+    except Exception:
+        pass  # Silently ignore file logging errors in production
+
+
 from .staff_recommender import StaffRecommenderAgent
 
 
@@ -49,84 +67,18 @@ class DemandPredictorAgent:
         Returns:
             Dict with predicted_covers, confidence, patterns, reasoning
         """
-        import sys
         import logging
         logger = logging.getLogger("uvicorn")
-        log_msg1 = f"[PREDICT] *** METHOD CALLED *** Starting prediction for {request.restaurant_id} on {request.service_date} ({request.service_type})"
-        log_msg2 = "[PREDICT] *** USING NEW CONTEXTUAL CODE VERSION ***"
-        logger.error(log_msg1)
-        logger.error(log_msg2)
-        sys.stderr.write(f"{log_msg1}\n")
-        sys.stderr.write(f"{log_msg2}\n")
-        sys.stderr.flush()
-        debug_log_path = get_debug_log_path()
-        try:
-            with open(debug_log_path, "a", encoding="utf-8") as f:
-                from datetime import datetime
-                f.write(f"{log_msg1} - {datetime.now()}\n{log_msg2} - {datetime.now()}\n")
-                f.flush()
-        except Exception as e:
-            logger.error(f"Error writing to debug.log: {e}")
-            sys.stderr.write(f"ERROR writing debug.log: {e}\n")
-            sys.stderr.flush()
+        
+        logger.info(f"[PREDICT] Starting prediction for {request.restaurant_id} on {request.service_date}")
+        _write_debug_log(f"[PREDICT] Starting prediction for {request.restaurant_id}")
         
         # Step 1: Fetch external context
         context = await self._fetch_external_context(request)
         
-        # Step 2: Find similar patterns (NOW CONTEXTUAL!)
-        sys.stderr.write(f"[PREDICT] *** ABOUT TO CALL _find_similar_patterns ***\n")
-        sys.stderr.flush()
-        logger.error("[PREDICT] *** ABOUT TO CALL _find_similar_patterns ***")
-        
-        similar_patterns = []
-        try:
-            similar_patterns = await self._find_similar_patterns(request, context)
-            
-            # Success logging
-            sys.stderr.write(f"[PREDICT] *** _find_similar_patterns RETURNED {len(similar_patterns)} patterns ***\n")
-            sys.stderr.flush()
-            logger.error(f"[PREDICT] *** _find_similar_patterns RETURNED {len(similar_patterns)} patterns ***")
-            
-            if similar_patterns:
-                for idx, p in enumerate(similar_patterns):
-                    pattern_info = f"  Pattern {idx+1}: {p.event_type} - {p.actual_covers} covers - Date: {p.date} - Similarity: {p.similarity}"
-                    sys.stderr.write(f"{pattern_info}\n")
-                    logger.error(pattern_info)
-            else:
-                sys.stderr.write("[PREDICT] WARNING: No patterns returned!\n")
-                logger.warning("[PREDICT] WARNING: No patterns returned!")
-                
-        except Exception as e:
-            # Detailed error logging with full traceback
-            import traceback
-            error_msg = f"[PREDICT] *** EXCEPTION in _find_similar_patterns ***"
-            sys.stderr.write(f"\n{'='*80}\n")
-            sys.stderr.write(f"{error_msg}\n")
-            sys.stderr.write(f"Exception Type: {type(e).__name__}\n")
-            sys.stderr.write(f"Exception Message: {str(e)}\n")
-            sys.stderr.write(f"{'='*80}\n")
-            sys.stderr.write("Full Traceback:\n")
-            traceback.print_exc(file=sys.stderr)
-            sys.stderr.write(f"{'='*80}\n")
-            sys.stderr.flush()
-            
-            logger.error(error_msg)
-            logger.error(f"Exception Type: {type(e).__name__}")
-            logger.error(f"Exception Message: {str(e)}")
-            logger.error(f"Traceback: {traceback.format_exc()}")
-            
-            # Write to debug.log for persistence
-            try:
-                with open(debug_log_path, "a", encoding="utf-8") as f:
-                    f.write(f"\n{'='*80}\n")
-                    f.write(f"{error_msg} - {datetime.now()}\n")
-                    f.write(f"Exception: {type(e).__name__}: {str(e)}\n")
-                    f.write(f"Traceback:\n{traceback.format_exc()}\n")
-                    f.write(f"{'='*80}\n")
-            except:
-                pass
-            
-            raise
+        # Step 2: Find similar patterns
+        similar_patterns = await self._find_similar_patterns(request, context)
+        logger.info(f"[PREDICT] Found {len(similar_patterns)} similar patterns")
         
         # Step 3: Calculate prediction
         prediction = await self._calculate_prediction(similar_patterns, context)
@@ -161,11 +113,6 @@ class DemandPredictorAgent:
         Phase 1: MOCKED data (no real APIs yet)
         Phase 2: Integrate PredictHQ, Weather API
         """
-        import sys
-        sys.stdout.flush()
-        sys.stderr.flush()
-        print("  [CONTEXT] Fetching external context...", file=sys.stderr, flush=True)
-        
         # Determine day type
         day_of_week = request.service_date.strftime("%A")
         is_weekend = request.service_date.weekday() in [5, 6]
@@ -173,18 +120,15 @@ class DemandPredictorAgent:
         
         # Generate realistic events based on day
         events = self._generate_mock_events(request.service_date, is_weekend)
-        print(f"  [CONTEXT] Generated {len(events)} events")
         
         # Generate realistic weather
         weather = self._generate_mock_weather(request.service_date, is_weekend)
-        print(f"  [CONTEXT] Weather: {weather['condition']}, {weather['temperature']}C")
         
         # Check if holiday
         is_holiday = self._is_mock_holiday(request.service_date)
         holiday_name = self._get_holiday_name(request.service_date) if is_holiday else None
-        print(f"  [CONTEXT] Holiday: {is_holiday} ({holiday_name if holiday_name else 'None'})")
         
-        context = {
+        return {
             "day_of_week": day_of_week,
             "events": events,
             "weather": weather,
@@ -192,9 +136,6 @@ class DemandPredictorAgent:
             "holiday_name": holiday_name,
             "day_type": "weekend" if is_weekend else "friday" if is_friday else "weekday"
         }
-        
-        print(f"  [CONTEXT] OK - {context['day_of_week']} ({context['day_type']}), {len(context['events'])} events")
-        return context
     
     def _generate_mock_events(self, service_date: date, is_weekend: bool) -> List[Dict]:
         """Generate realistic mock events based on date"""
@@ -357,35 +298,7 @@ class DemandPredictorAgent:
         Phase 1: Smart mock data based on context
         Phase 2: Real Qdrant vector search with embeddings
         """
-        import sys
-        import logging
-        logger = logging.getLogger("uvicorn")
-        
-        # CRITICAL: This print MUST appear if method is called
-        CRITICAL_MSG = "*** _find_similar_patterns CALLED - NEW CODE VERSION ***"
-        logger.error(CRITICAL_MSG)
-        sys.stderr.write("\n" + "=" * 100 + "\n")
-        sys.stderr.write(CRITICAL_MSG + "\n")
-        sys.stderr.write("=" * 100 + "\n")
-        sys.stderr.flush()
-        
-        log_msg = "  [PATTERNS] *** GENERATING CONTEXTUAL PATTERNS - NEW CODE VERSION ***"
-        logger.error(log_msg)
-        sys.stderr.write("=" * 80 + "\n")
-        sys.stderr.write(f"{log_msg}\n")
-        sys.stderr.write("=" * 80 + "\n")
-        sys.stderr.write("  [PATTERNS] Generating contextual patterns...\n")
-        sys.stderr.flush()
-        debug_log_path = get_debug_log_path()
-        try:
-            with open(debug_log_path, "a", encoding="utf-8") as f:
-                from datetime import datetime
-                f.write(f"{log_msg} - {datetime.now()}\n")
-                f.flush()
-        except Exception as e:
-            logger.error(f"Error writing to debug.log: {e}")
-            sys.stderr.write(f"ERROR writing debug.log: {e}\n")
-            sys.stderr.flush()
+        _write_debug_log("[PATTERNS] Generating contextual patterns")
         
         # Seed for deterministic but varied results
         random.seed(request.service_date.toordinal() + 2000)
@@ -402,28 +315,22 @@ class DemandPredictorAgent:
         if context['events']:
             event_boost = len(context['events']) * 15
             base_covers += event_boost
-            print(f"  [PATTERNS] Event boost: +{event_boost} covers ({len(context['events'])} events)", file=sys.stderr, flush=True)
         
         # Adjust for weather
         if context['weather']['condition'] == 'Rain':
             base_covers -= 10
-            print(f"  [PATTERNS] Weather penalty: -10 covers (Rain)", file=sys.stderr, flush=True)
         elif context['weather']['condition'] == 'Heavy Rain':
             base_covers -= 20
-            print(f"  [PATTERNS] Weather penalty: -20 covers (Heavy Rain)", file=sys.stderr, flush=True)
         
-        # SPECIAL CASE: Holidays (CRITICAL FIX!)
+        # SPECIAL CASE: Holidays
         if context['is_holiday']:
             holiday_name = context['holiday_name']
             if holiday_name in ["Christmas Eve", "Christmas"]:
                 base_covers = random.randint(40, 70)
-                print(f"  [PATTERNS] HOLIDAY OVERRIDE: {holiday_name} = {base_covers} covers (very quiet)", file=sys.stderr, flush=True)
             elif holiday_name == "New Year's Eve":
                 base_covers = random.randint(180, 220)
-                print(f"  [PATTERNS] HOLIDAY OVERRIDE: {holiday_name} = {base_covers} covers (very busy)", file=sys.stderr, flush=True)
             elif holiday_name == "New Year's Day":
                 base_covers = random.randint(50, 80)
-                print(f"  [PATTERNS] HOLIDAY OVERRIDE: {holiday_name} = {base_covers} covers (recovery day)", file=sys.stderr, flush=True)
         
         # Generate 3 patterns around this base
         patterns = []
@@ -464,8 +371,6 @@ class DemandPredictorAgent:
         # Sort by similarity
         patterns.sort(key=lambda p: p.similarity, reverse=True)
         
-        print(f"  [PATTERNS] OK - Generated 3 contextual patterns (avg: {int(sum(p.actual_covers for p in patterns)/3)} covers)", file=sys.stderr, flush=True)
-        
         return patterns
     
     async def _calculate_prediction(
@@ -474,7 +379,6 @@ class DemandPredictorAgent:
         context: Dict
     ) -> Dict:
         """Calculate weighted prediction based on similar patterns"""
-        print("  [CALC] Calculating prediction...")
         
         if not patterns:
             return {
@@ -492,8 +396,6 @@ class DemandPredictorAgent:
         avg_similarity = total_weight / len(patterns)
         confidence = round(avg_similarity, 2)
         
-        print(f"  [CALC] OK - Prediction: {predicted_covers} covers ({int(confidence*100)}% confidence)")
-        
         return {
             "predicted_covers": predicted_covers,
             "confidence": confidence,
@@ -502,25 +404,13 @@ class DemandPredictorAgent:
         }
 
 
-# Singleton instance - DISABLED FOR DEBUGGING
+# Singleton instance
 _demand_predictor = None
 
+
 def get_demand_predictor() -> DemandPredictorAgent:
-    """Get demand predictor singleton - FORCED NEW INSTANCE FOR DEBUGGING"""
+    """Get demand predictor singleton"""
     global _demand_predictor
-    import sys
-    import logging
-    logger = logging.getLogger("uvicorn")
-    
-    # FORCE NEW INSTANCE EVERY TIME - NO CACHING
-    sys.stderr.write(f"[SINGLETON] *** FORCING NEW INSTANCE *** (no cache)\n")
-    sys.stderr.flush()
-    logger.error("[SINGLETON] *** FORCING NEW INSTANCE *** (no cache)")
-    
-    # Always create new instance
-    _demand_predictor = DemandPredictorAgent()
-    sys.stderr.write(f"[SINGLETON] New instance created: {id(_demand_predictor)}\n")
-    sys.stderr.flush()
-    logger.error(f"[SINGLETON] New instance created: {id(_demand_predictor)}")
-    
+    if _demand_predictor is None:
+        _demand_predictor = DemandPredictorAgent()
     return _demand_predictor
