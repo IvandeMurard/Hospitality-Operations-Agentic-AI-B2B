@@ -93,7 +93,5 @@ print("=" * 60)
 
 if result:
     print("\n✓ Tous les tests ont réussi")
-    print("\nSi vous voyez les prints de debug (*** USING NEW CONTEXTUAL GENERATION LOGIC ***),")
-    print("cela confirme que le nouveau code s'exécute correctement.")
 else:
     print("\n✗ Échec des tests")
