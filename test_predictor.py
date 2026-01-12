@@ -61,11 +61,14 @@ async def test_prediction():
         print("-" * 60)
         print(f"Predicted covers: {result['predicted_covers']}")
         print(f"Confidence: {result['confidence']}")
-        print(f"Patterns: {len(result.get('patterns', []))} patterns")
         
-        if result.get('patterns'):
+        # Patterns are in result['reasoning']['patterns_used']
+        patterns = result.get('reasoning', {}).get('patterns_used', [])
+        print(f"Patterns: {len(patterns)} patterns")
+        
+        if patterns:
             print("\nPremier pattern:")
-            p = result['patterns'][0]
+            p = patterns[0]
             print(f"  - Date: {p.date}")
             print(f"  - Type: {p.event_type}")
             print(f"  - Covers: {p.actual_covers}")
