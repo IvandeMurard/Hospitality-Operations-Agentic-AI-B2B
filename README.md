@@ -138,25 +138,38 @@ See `requirements.txt` for Python dependencies.
 
 ---
 
-## 📈 Roadmap
+📈 Roadmap
+✅ Phase 1: COMPLETE
+**Backend API with mock patterns**
+Multi-agent system (Demand Predictor, Staff Recommender, Reasoning Engine)
+Context-aware mock data generation (events, weather, holidays)
+Confidence scoring + explainable reasoning
+Integration test suite (7 scenarios)
+HuggingFace Spaces deployment
 
-### ✅ Phase 1: Core Prediction Engine (Current)
-- FastAPI backend with `/predict` endpoint
-- RAG architecture (Qdrant + Claude)
-- Multi-agent system (Demand Predictor, Staff Recommender, Reasoning Engine)
-- Deployed on HuggingFace Spaces
+🚧 Phase 2: RAG Implementation (Current)
+**Replace mock data with real patterns**
+Download & process Kaggle Hotel Booking dataset (119K reservations)
+Derive F&B covers from hotel occupancy data
+Seed Qdrant with pattern embeddings (vector search)
+Replace mock data patterns with semantic similarity search
+PMS Adapter pattern (foundation for multi-PMS support)
+Forecasting methods research (MAPE, industry standards)
 
-### 🚧 Phase 2: Enhanced Context & Dashboard (In Progress)
-- PMS integration
-- Event & weather API integration (PredictHQ, OpenWeather)
-- Dashboard interface (Next.js + shadcn/ui)
-- Historical accuracy tracking
+📋 Phase 3: Dashboard & Integrations (Next)
+**Production-ready interface & real data**
+Dashboard UI (Streamlit/Next.js) for prediction visualization
+Real PMS integration (APIs)
+Event & Weather APIs (PredictHQ, OpenWeather)
+Manager approval workflows
+Historical accuracy tracking
 
-### 🔮 Phase 3: Advanced Features (Q1 2025)
-- Conversational interface (voice + text)
-- What-if scenario modeling ("What if we close the bar on Mondays?")
-- F&B demand prediction (food waste reduction)
-- Multi-property management
+🔮 Phase 4: Agentic Features (Future)
+**Advanced AI capabilities**
+Conversational interface (ElevenLabs)
+Query layer for natural language data access
+Design partner program
+Build in public campaign
 
 ---
 
