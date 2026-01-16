@@ -136,6 +136,7 @@ class DemandPredictorAgent:
         
         logger.info(f"[PREDICT] Starting prediction for {request.restaurant_id} on {request.service_date}")
         _write_debug_log(f"[PREDICT] Starting prediction for {request.restaurant_id}")
+        logger.info(f"[PREDICT] Qdrant client initialized: {self.qdrant_client is not None}, Mistral client initialized: {self.mistral_client is not None}")
         
         # Step 1: Fetch external context
         context = await self._fetch_external_context(request)
@@ -570,6 +571,7 @@ Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 
             try:
                 _write_debug_log("[PATTERNS] Using Qdrant vector search")
                 logger.info("[PATTERNS] Using Qdrant vector search")
+                logger.info(f"[PATTERNS] Qdrant client available: {self.qdrant_client is not None}, Mistral client available: {self.mistral_client is not None}")
                 
                 # Build context string (same format as seeded patterns)
                 context_str = self._build_context_string(request, context)
@@ -602,7 +604,12 @@ Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 
         
         # FALLBACK: Generate mock patterns (existing logic)
         _write_debug_log("[PATTERNS] Using mock pattern generation (fallback)")
-        logger.info("[PATTERNS] Using mock pattern generation")
+        logger.info("[PATTERNS] Using mock pattern generation (fallback)")
+        logger.warning(f"[PATTERNS] Qdrant client: {self.qdrant_client is not None}, Mistral client: {self.mistral_client is not None}")
+        if not self.qdrant_client:
+            logger.warning("[PATTERNS] Qdrant client not initialized - check QDRANT_URL and QDRANT_API_KEY")
+        if not self.mistral_client:
+            logger.warning("[PATTERNS] Mistral client not initialized - check MISTRAL_API_KEY")
         return await self._generate_mock_patterns(request, context)
     
     async def _calculate_prediction(
