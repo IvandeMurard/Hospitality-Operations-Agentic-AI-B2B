@@ -1,3 +1,14 @@
+---
+title: F&B Operations Agent
+emoji: 🍽️
+colorFrom: blue
+colorTo: purple
+sdk: docker
+sdk_version: "4.0.0"
+python_version: "3.11"
+pinned: false
+---
+
 # F&B Operations Agent
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
