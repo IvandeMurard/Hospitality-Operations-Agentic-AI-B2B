@@ -362,11 +362,32 @@ class DemandPredictorAgent:
         # Get service type as string (handle enum)
         service_type_str = request.service_type.value if hasattr(request.service_type, 'value') else str(request.service_type)
         
+        # Use realistic values based on day_type to match Qdrant patterns
+        # Weekend/holiday = higher occupancy, weekday = lower
+        # Values based on actual pattern distribution in seed_qdrant.py
+        day_type = context.get('day_type', 'weekday')
+        if day_type == 'weekend' or context.get('is_holiday'):
+            # Weekend/holiday: higher occupancy (0.85-1.0), more guests (200-280)
+            hotel_occupancy = 0.92
+            guests_in_house = 240
+        elif day_type == 'friday':
+            # Friday: medium-high occupancy (0.80-0.95), medium guests (180-220)
+            hotel_occupancy = 0.88
+            guests_in_house = 200
+        else:
+            # Weekday: lower occupancy (0.70-0.85), fewer guests (150-200)
+            hotel_occupancy = 0.78
+            guests_in_house = 175
+        
+        # Allow override from context if available (for future PMS integration)
+        hotel_occupancy = context.get('hotel_occupancy', hotel_occupancy)
+        guests_in_house = context.get('guests_in_house', guests_in_house)
+        
         return f"""Date: {date_str} ({context['day_of_week']})
 Service: {service_type_str}
-Day type: {context['day_type']}
-Hotel occupancy: 0.75
-Guests in house: 150
+Day type: {day_type}
+Hotel occupancy: {hotel_occupancy}
+Guests in house: {guests_in_house}
 Weather: {weather.get('condition', 'Unknown')}, {weather.get('temperature', 'N/A')}°C
 Events nearby: {events_str}
 Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 'None'}"""
@@ -423,7 +444,19 @@ Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 
         # Build event description
         events = payload.get("events", [])
         if events:
-            event_desc = f"{events[0]} nearby"
+            # Handle both string and dict formats for events
+            event_types = []
+            for event in events:
+                if isinstance(event, dict):
+                    event_type = event.get("type", "Event")
+                else:
+                    event_type = str(event)
+                event_types.append(event_type)
+            
+            if len(event_types) == 1:
+                event_desc = f"{event_types[0]} nearby"
+            else:
+                event_desc = f"{', '.join(event_types[:2])} nearby" + (f" (+{len(event_types)-2} more)" if len(event_types) > 2 else "")
         elif payload.get("is_holiday"):
             event_desc = f"{payload.get('holiday_name', 'Holiday')} service"
         else:
