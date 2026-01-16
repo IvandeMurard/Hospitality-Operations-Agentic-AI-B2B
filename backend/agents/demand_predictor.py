@@ -68,32 +68,56 @@ class DemandPredictorAgent:
     def _init_vector_clients(self):
         """Initialize Qdrant and Mistral clients for vector search"""
         try:
-            # Load .env from project root (same as main.py)
+            # Load .env from project root if it exists (for local dev)
+            # In production (Docker/HuggingFace), env vars are injected directly
             from dotenv import load_dotenv
             env_path = Path(__file__).parent.parent.parent / ".env"
-            _write_debug_log(f"[INIT] Loading .env from: {env_path} (exists: {env_path.exists()})")
-            load_dotenv(dotenv_path=env_path, override=True)
+            if env_path.exists():
+                _write_debug_log(f"[INIT] Loading .env from: {env_path}")
+                load_dotenv(dotenv_path=env_path, override=True)
+            else:
+                _write_debug_log("[INIT] No .env file found, using system environment variables")
             
+            # Get environment variables (from .env file or system env)
             qdrant_url = os.getenv("QDRANT_URL")
             qdrant_api_key = os.getenv("QDRANT_API_KEY")
             mistral_api_key = os.getenv("MISTRAL_API_KEY")
-            _write_debug_log(f"[INIT] MISTRAL_API_KEY found: {bool(mistral_api_key)}, length: {len(mistral_api_key) if mistral_api_key else 0}")
+            
+            _write_debug_log(f"[INIT] QDRANT_URL found: {bool(qdrant_url)}")
+            _write_debug_log(f"[INIT] QDRANT_API_KEY found: {bool(qdrant_api_key)}")
+            _write_debug_log(f"[INIT] MISTRAL_API_KEY found: {bool(mistral_api_key)}")
             
             if qdrant_url and qdrant_api_key:
-                self.qdrant_client = QdrantClient(
-                    url=qdrant_url,
-                    api_key=qdrant_api_key
-                )
-                _write_debug_log("[INIT] Qdrant client initialized")
+                try:
+                    self.qdrant_client = QdrantClient(
+                        url=qdrant_url,
+                        api_key=qdrant_api_key
+                    )
+                    # Test connection by getting collections
+                    collections = self.qdrant_client.get_collections()
+                    _write_debug_log(f"[INIT] Qdrant client initialized successfully. Collections: {[c.name for c in collections.collections]}")
+                except Exception as e:
+                    _write_debug_log(f"[INIT] Qdrant connection failed: {e}")
+                    self.qdrant_client = None
+            else:
+                _write_debug_log("[INIT] Qdrant credentials missing")
+                self.qdrant_client = None
             
             if mistral_api_key:
-                self.mistral_client = Mistral(api_key=mistral_api_key)
-                _write_debug_log("[INIT] Mistral client initialized")
+                try:
+                    self.mistral_client = Mistral(api_key=mistral_api_key)
+                    _write_debug_log("[INIT] Mistral client initialized successfully")
+                except Exception as e:
+                    _write_debug_log(f"[INIT] Mistral client init failed: {e}")
+                    self.mistral_client = None
             else:
                 _write_debug_log("[INIT] Mistral API key not found or empty")
+                self.mistral_client = None
                 
         except Exception as e:
             _write_debug_log(f"[INIT] Vector client init failed: {e}")
+            import traceback
+            _write_debug_log(f"[INIT] Traceback: {traceback.format_exc()}")
             self.qdrant_client = None
             self.mistral_client = None
     
