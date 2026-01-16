@@ -96,8 +96,13 @@ class DemandPredictorAgent:
                     # Test connection by getting collections
                     collections = self.qdrant_client.get_collections()
                     _write_debug_log(f"[INIT] Qdrant client initialized successfully. Collections: {[c.name for c in collections.collections]}")
+                    # Test that search method exists
+                    if not hasattr(self.qdrant_client, 'search'):
+                        _write_debug_log(f"[INIT] WARNING: QdrantClient has no 'search' method. Available methods: {[m for m in dir(self.qdrant_client) if not m.startswith('_')]}")
                 except Exception as e:
                     _write_debug_log(f"[INIT] Qdrant connection failed: {e}")
+                    import traceback
+                    _write_debug_log(f"[INIT] Traceback: {traceback.format_exc()}")
                     self.qdrant_client = None
             else:
                 _write_debug_log("[INIT] Qdrant credentials missing")
@@ -402,7 +407,10 @@ Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 
         return response.data[0].embedding
 
     def _search_qdrant(self, embedding: List[float], service_type: str, limit: int = 5) -> List:
-        """Search Qdrant for similar patterns"""
+        """Search Qdrant for similar patterns using query_points (new API)"""
+        import logging
+        logger = logging.getLogger("uvicorn")
+        
         try:
             # Build filter for service type
             search_filter = Filter(
@@ -414,28 +422,52 @@ Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 
                 ]
             )
             
-            results = self.qdrant_client.search(
+            # Use query_points method (new qdrant-client API v1.16.0+)
+            # query_points replaces the deprecated search() method
+            results = self.qdrant_client.query_points(
                 collection_name="fb_patterns",
-                query_vector=embedding,
+                query=embedding,  # query_points uses 'query' instead of 'query_vector'
                 query_filter=search_filter,
-                limit=limit
+                limit=limit,
+                with_payload=True
             )
             
-            return results
+            # query_points returns a QueryResponse, extract points
+            if hasattr(results, 'points'):
+                return results.points
+            elif isinstance(results, list):
+                return results
+            else:
+                # Fallback: try to get points from response object
+                return list(results) if results else []
+                
         except Exception as e:
             # Try without filter if filter fails
+            logger.warning(f"[PATTERNS] Filter search failed: {e}, trying without filter")
             _write_debug_log(f"[PATTERNS] Filter search failed: {e}, trying without filter")
             try:
-                results = self.qdrant_client.search(
+                results = self.qdrant_client.query_points(
                     collection_name="fb_patterns",
-                    query_vector=embedding,
-                    limit=limit
+                    query=embedding,
+                    limit=limit * 2,  # Get more results to filter manually
+                    with_payload=True
                 )
+                # Extract points from response
+                if hasattr(results, 'points'):
+                    points = results.points
+                elif isinstance(results, list):
+                    points = results
+                else:
+                    points = list(results) if results else []
+                
                 # Filter results manually by service_type
-                filtered_results = [r for r in results if r.payload.get("service_type") == service_type]
+                filtered_results = [r for r in points if r.payload.get("service_type") == service_type]
                 return filtered_results[:limit]
             except Exception as e2:
-                _write_debug_log(f"[PATTERNS] Search without filter also failed: {e2}")
+                logger.error(f"[PATTERNS] Query without filter also failed: {e2}")
+                _write_debug_log(f"[PATTERNS] Query without filter also failed: {e2}")
+                import traceback
+                _write_debug_log(f"[PATTERNS] Traceback: {traceback.format_exc()}")
                 raise e2
 
     def _qdrant_hit_to_pattern(self, hit) -> Pattern:
