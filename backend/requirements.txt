@@ -7,6 +7,7 @@ pydantic>=2.5.3
 # AI/ML
 anthropic>=0.8.1
 qdrant-client>=1.7.1
+mistralai>=1.0.0
 
 # Database
 supabase>=2.3.0

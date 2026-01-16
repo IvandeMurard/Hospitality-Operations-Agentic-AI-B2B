@@ -17,6 +17,9 @@ from ..models.schemas import (
     ServiceType
 )
 from .reasoning_engine import get_reasoning_engine
+from mistralai import Mistral
+from qdrant_client import QdrantClient
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 
 def get_debug_log_path() -> str | None:
@@ -56,6 +59,43 @@ class DemandPredictorAgent:
     def __init__(self):
         """Initialize predictor agent"""
         self.staff_recommender = StaffRecommenderAgent()
+        
+        # Initialize Qdrant client
+        self.qdrant_client = None
+        self.mistral_client = None
+        self._init_vector_clients()
+    
+    def _init_vector_clients(self):
+        """Initialize Qdrant and Mistral clients for vector search"""
+        try:
+            # Load .env from project root (same as main.py)
+            from dotenv import load_dotenv
+            env_path = Path(__file__).parent.parent.parent / ".env"
+            _write_debug_log(f"[INIT] Loading .env from: {env_path} (exists: {env_path.exists()})")
+            load_dotenv(dotenv_path=env_path, override=True)
+            
+            qdrant_url = os.getenv("QDRANT_URL")
+            qdrant_api_key = os.getenv("QDRANT_API_KEY")
+            mistral_api_key = os.getenv("MISTRAL_API_KEY")
+            _write_debug_log(f"[INIT] MISTRAL_API_KEY found: {bool(mistral_api_key)}, length: {len(mistral_api_key) if mistral_api_key else 0}")
+            
+            if qdrant_url and qdrant_api_key:
+                self.qdrant_client = QdrantClient(
+                    url=qdrant_url,
+                    api_key=qdrant_api_key
+                )
+                _write_debug_log("[INIT] Qdrant client initialized")
+            
+            if mistral_api_key:
+                self.mistral_client = Mistral(api_key=mistral_api_key)
+                _write_debug_log("[INIT] Mistral client initialized")
+            else:
+                _write_debug_log("[INIT] Mistral API key not found or empty")
+                
+        except Exception as e:
+            _write_debug_log(f"[INIT] Vector client init failed: {e}")
+            self.qdrant_client = None
+            self.mistral_client = None
     
     async def predict(self, request: PredictionRequest) -> Dict:
         """
@@ -287,20 +327,108 @@ class DemandPredictorAgent:
         
         return holidays.get((service_date.month, service_date.day))
     
-    async def _find_similar_patterns(
-        self, 
-        request: PredictionRequest, 
+    def _build_context_string(self, request: PredictionRequest, context: Dict) -> str:
+        """Build context string for embedding (same format as seed_qdrant.py)"""
+        events_str = ", ".join([e["type"] for e in context.get("events", [])]) or "None"
+        weather = context.get("weather", {})
+        
+        # Format date as YYYY-MM-DD string (same as seed_qdrant.py)
+        date_str = request.service_date.strftime("%Y-%m-%d")
+        
+        # Get service type as string (handle enum)
+        service_type_str = request.service_type.value if hasattr(request.service_type, 'value') else str(request.service_type)
+        
+        return f"""Date: {date_str} ({context['day_of_week']})
+Service: {service_type_str}
+Day type: {context['day_type']}
+Hotel occupancy: 0.75
+Guests in house: 150
+Weather: {weather.get('condition', 'Unknown')}, {weather.get('temperature', 'N/A')}°C
+Events nearby: {events_str}
+Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 'None'}"""
+
+    def _get_embedding(self, text: str) -> List[float]:
+        """Get embedding from Mistral"""
+        response = self.mistral_client.embeddings.create(
+            model="mistral-embed",
+            inputs=[text]
+        )
+        return response.data[0].embedding
+
+    def _search_qdrant(self, embedding: List[float], service_type: str, limit: int = 5) -> List:
+        """Search Qdrant for similar patterns"""
+        try:
+            # Build filter for service type
+            search_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="service_type",
+                        match=MatchValue(value=service_type)
+                    )
+                ]
+            )
+            
+            results = self.qdrant_client.search(
+                collection_name="fb_patterns",
+                query_vector=embedding,
+                query_filter=search_filter,
+                limit=limit
+            )
+            
+            return results
+        except Exception as e:
+            # Try without filter if filter fails
+            _write_debug_log(f"[PATTERNS] Filter search failed: {e}, trying without filter")
+            try:
+                results = self.qdrant_client.search(
+                    collection_name="fb_patterns",
+                    query_vector=embedding,
+                    limit=limit
+                )
+                # Filter results manually by service_type
+                filtered_results = [r for r in results if r.payload.get("service_type") == service_type]
+                return filtered_results[:limit]
+            except Exception as e2:
+                _write_debug_log(f"[PATTERNS] Search without filter also failed: {e2}")
+                raise e2
+
+    def _qdrant_hit_to_pattern(self, hit) -> Pattern:
+        """Convert Qdrant search hit to Pattern object"""
+        payload = hit.payload
+        
+        # Build event description
+        events = payload.get("events", [])
+        if events:
+            event_desc = f"{events[0]} nearby"
+        elif payload.get("is_holiday"):
+            event_desc = f"{payload.get('holiday_name', 'Holiday')} service"
+        else:
+            event_desc = f"Regular {payload.get('day_type', 'weekday')} service"
+        
+        return Pattern(
+            pattern_id=payload.get("pattern_id", f"pat_{hit.id}"),
+            date=datetime.strptime(payload["date"], "%Y-%m-%d").date(),
+            event_type=event_desc,
+            actual_covers=payload["actual_covers"],
+            similarity=round(hit.score, 2),
+            metadata={
+                "day_of_week": payload.get("day_of_week"),
+                "weather": payload.get("weather_condition"),
+                "events": len(events),
+                "holiday": payload.get("holiday_name") if payload.get("is_holiday") else None,
+                "source": "qdrant"
+            }
+        )
+    
+    async def _generate_mock_patterns(
+        self,
+        request: PredictionRequest,
         context: Dict
     ) -> List[Pattern]:
         """
-        Generate CONTEXTUAL patterns that match current situation
-        
-        Phase 1: Smart mock data based on context
-        Phase 2: Real Qdrant vector search with embeddings
+        Generate mock patterns (fallback when Qdrant unavailable)
+        Original Phase 1 logic preserved for resilience
         """
-        _write_debug_log("[PATTERNS] Generating contextual patterns")
-        
-        # Seed for deterministic but varied results
         random.seed(request.service_date.toordinal() + 2000)
         
         # Base covers vary by day type
@@ -308,7 +436,7 @@ class DemandPredictorAgent:
             base_covers = random.randint(130, 160)
         elif context['day_type'] == 'friday':
             base_covers = random.randint(120, 145)
-        else:  # weekday
+        else:
             base_covers = random.randint(100, 130)
         
         # Adjust for events
@@ -335,14 +463,10 @@ class DemandPredictorAgent:
         # Generate 3 patterns around this base
         patterns = []
         for i in range(3):
-            # Historical date: 3-12 months ago
             months_ago = random.randint(3, 12)
             pattern_date = request.service_date - timedelta(days=30 * months_ago)
-            
-            # Vary covers slightly around base
             pattern_covers = base_covers + random.randint(-10, 10)
             
-            # Event type description
             if context['events']:
                 event_desc = f"{context['events'][0]['type']} nearby"
             elif context['is_holiday']:
@@ -353,25 +477,76 @@ class DemandPredictorAgent:
                 event_desc = f"Regular {context['day_type']} service"
             
             pattern = Pattern(
-                pattern_id=f"pat_{i+1:03d}",
+                pattern_id=f"mock_{i+1:03d}",
                 date=pattern_date,
                 event_type=event_desc,
-                actual_covers=max(30, pattern_covers),  # Min 30 covers
+                actual_covers=max(30, pattern_covers),
                 similarity=round(random.uniform(0.85, 0.95), 2),
                 metadata={
                     "day_of_week": context['day_of_week'],
                     "weather": context['weather']['condition'],
                     "events": len(context['events']),
-                    "holiday": context['holiday_name'] if context['is_holiday'] else None
+                    "holiday": context['holiday_name'] if context['is_holiday'] else None,
+                    "source": "mock"
                 }
             )
-            
             patterns.append(pattern)
         
-        # Sort by similarity
         patterns.sort(key=lambda p: p.similarity, reverse=True)
-        
         return patterns
+    
+    async def _find_similar_patterns(
+        self, 
+        request: PredictionRequest, 
+        context: Dict
+    ) -> List[Pattern]:
+        """
+        Find similar patterns using Qdrant vector search
+        
+        Falls back to mock generation if Qdrant unavailable
+        """
+        import logging
+        logger = logging.getLogger("uvicorn")
+        
+        # Try Qdrant search first
+        if self.qdrant_client and self.mistral_client:
+            try:
+                _write_debug_log("[PATTERNS] Using Qdrant vector search")
+                logger.info("[PATTERNS] Using Qdrant vector search")
+                
+                # Build context string (same format as seeded patterns)
+                context_str = self._build_context_string(request, context)
+                _write_debug_log(f"[PATTERNS] Context: {context_str[:100]}...")
+                
+                # Get embedding
+                embedding = self._get_embedding(context_str)
+                
+                # Get service type as string and map to Qdrant values
+                service_type = request.service_type.value if hasattr(request.service_type, 'value') else str(request.service_type)
+                # Map brunch to breakfast (closest match in Qdrant patterns)
+                if service_type == "brunch":
+                    service_type = "breakfast"
+                
+                # Search Qdrant
+                hits = self._search_qdrant(embedding, service_type, limit=5)
+                
+                if hits:
+                    patterns = [self._qdrant_hit_to_pattern(hit) for hit in hits]
+                    logger.info(f"[PATTERNS] Found {len(patterns)} patterns from Qdrant")
+                    _write_debug_log(f"[PATTERNS] Found {len(patterns)} patterns, top score: {patterns[0].similarity}")
+                    return patterns
+                else:
+                    logger.warning("[PATTERNS] No Qdrant results, falling back to mock")
+                    _write_debug_log("[PATTERNS] No Qdrant results, using fallback")
+                    
+            except Exception as e:
+                logger.error(f"[PATTERNS] Qdrant search failed: {e}")
+                _write_debug_log(f"[PATTERNS] Qdrant error: {e}, using fallback")
+        
+        # FALLBACK: Generate mock patterns (existing logic)
+        _write_debug_log("[PATTERNS] Using mock pattern generation (fallback)")
+        logger.info("[PATTERNS] Using mock pattern generation")
+        return await self._generate_mock_patterns(request, context)
     
     async def _calculate_prediction(
         self,
