@@ -14,6 +14,90 @@ import plotly.graph_objects as go
 # Configuration
 API_URL = "https://ivandemurard-fb-agent-api.hf.space"
 
+# Explanatory content
+EXPLAINER_CONTENT = {
+    "how_it_works": """
+### 🔍 How does this prediction work?
+
+**Data source:**
+- 495 historical patterns derived from a hotel dataset (119K reservations, 2015-2017)
+- Each pattern captures: day of week, weather, events, holidays, actual covers
+
+**Method:**
+1. Your request (date, service) is converted into a numerical "fingerprint" (embedding)
+2. Search for the 5 most similar historical patterns (cosine similarity)
+3. Weighted average of covers from these patterns = prediction
+4. AI generates a natural language explanation
+
+**Current limitations:**
+- Derived data (not real hotel data)
+- No PMS connection (simulated occupancy)
+- Weather and events are simulated
+    """,
+    
+    "mape_explanation": """
+**MAPE** (Mean Absolute Percentage Error)
+
+Measures the estimated average gap between prediction and reality.
+
+| Value | Interpretation |
+|-------|----------------|
+| < 15% | ✅ Excellent — High reliability |
+| 15-25% | ⚠️ Acceptable — Plan for a margin |
+| > 25% | ⚠️ Caution — High variance in similar patterns |
+
+*Note: Estimated from pattern variance, not yet backtested on real data.*
+    """,
+    
+    "confidence_explanation": """
+**Confidence Score**
+
+Based on **cosine similarity** between your context and historical patterns.
+
+| Score | Meaning |
+|-------|---------|
+| > 90% | Found patterns match your situation very well |
+| 80-90% | Good match, minor differences |
+| < 80% | Unusual context, few similar patterns |
+
+*Calculation: Average of similarity scores from the 5 best patterns.*
+    """
+}
+
+# Historical baseline (derived from patterns)
+BASELINE_STATS = {
+    "weekly_covers_range": (180, 320),
+    "avg_daily_dinner": 35,
+    "avg_daily_lunch": 22,
+    "avg_daily_breakfast": 28,
+    "patterns_count": 495,
+    "data_period": "2015-2017"
+}
+
+
+def get_mape_interpretation(mape_value):
+    """Return color and emoji for MAPE interpretation"""
+    if mape_value is None:
+        return "gray", "❓", "Not available"
+    elif mape_value < 15:
+        return "green", "✅", "Excellent"
+    elif mape_value < 25:
+        return "orange", "⚠️", "Acceptable"
+    else:
+        return "red", "⚠️", "High variance"
+
+
+def get_confidence_interpretation(confidence):
+    """Return color and emoji for confidence interpretation"""
+    if confidence is None:
+        return "gray", "❓", "Not available"
+    elif confidence >= 0.90:
+        return "green", "✅", "Very similar"
+    elif confidence >= 0.80:
+        return "orange", "👍", "Good match"
+    else:
+        return "red", "⚠️", "Unusual context"
+
 
 def fetch_prediction(params: dict) -> dict:
     """Fetch a single prediction from API"""
@@ -89,6 +173,18 @@ st.markdown("""
 # Header
 st.title("🍽️ F&B Operations Agent")
 st.markdown("*AI-powered demand forecasting for hotel restaurants*")
+
+# How it works (collapsible)
+with st.expander("ℹ️ How it works?", expanded=False):
+    st.markdown(EXPLAINER_CONTENT["how_it_works"])
+    
+    col_stat1, col_stat2, col_stat3 = st.columns(3)
+    with col_stat1:
+        st.metric("Historical Patterns", BASELINE_STATS["patterns_count"])
+    with col_stat2:
+        st.metric("Data Period", BASELINE_STATS["data_period"])
+    with col_stat3:
+        st.metric("Avg dinner/day", f"{BASELINE_STATS['avg_daily_dinner']} covers")
 
 st.divider()
 
@@ -180,18 +276,47 @@ if predict_button:
                     metric_col1, metric_col2, metric_col3 = st.columns(3)
                     
                     with metric_col1:
-                        st.metric(label="Predicted Covers", value=f"{predicted_covers}")
+                        # Baseline comparison
+                        baseline_key = f"avg_daily_{service_type}"
+                        baseline = BASELINE_STATS.get(baseline_key, 0)
+                        if baseline > 0:
+                            delta = predicted_covers - baseline
+                            delta_pct = (delta / baseline * 100) if baseline else 0
+                            st.metric(
+                                label="Predicted Covers",
+                                value=f"{predicted_covers}",
+                                delta=f"{delta:+.0f} vs baseline ({baseline})",
+                                delta_color="normal",
+                                help=f"Historical baseline for {service_type}: {baseline} covers/day"
+                            )
+                        else:
+                            st.metric(
+                                label="Predicted Covers",
+                                value=f"{predicted_covers}",
+                                help=f"Predicted covers for {service_type}"
+                            )
                     
                     with metric_col2:
-                        st.metric(label="Confidence", value=f"{confidence:.0%}")
+                        conf_color, conf_emoji, conf_text = get_confidence_interpretation(confidence)
+                        st.metric(
+                            label="Confidence",
+                            value=f"{confidence:.0%} {conf_emoji}",
+                            help="Average cosine similarity of found patterns. Click 'Understand metrics' for more details."
+                        )
+                        st.caption(conf_text)
                     
                     with metric_col3:
                         mape = accuracy.get("estimated_mape")
-                        st.metric(
-                            label="Est. MAPE",
-                            value=f"{mape:.1f}%" if mape else "N/A",
-                            help="Estimated from pattern variance"
-                        )
+                        if mape:
+                            mape_color, mape_emoji, mape_text = get_mape_interpretation(mape)
+                            st.metric(
+                                label="Est. MAPE",
+                                value=f"{mape:.1f}% {mape_emoji}",
+                                help="Estimated Mean Absolute Percentage Error. Measures expected average gap between prediction and reality."
+                            )
+                            st.caption(mape_text)
+                        else:
+                            st.metric(label="Est. MAPE", value="N/A")
                     
                     interval = accuracy.get("prediction_interval")
                     if interval:
@@ -230,6 +355,14 @@ if predict_button:
                             st.caption(f"📈 Covers per staff: {covers_per_staff:.1f}")
                     else:
                         st.info("No staff recommendation available")
+                    
+                    # Metrics explanation
+                    with st.expander("📊 Understand metrics", expanded=False):
+                        tab1, tab2 = st.tabs(["Confidence", "MAPE"])
+                        with tab1:
+                            st.markdown(EXPLAINER_CONTENT["confidence_explanation"])
+                        with tab2:
+                            st.markdown(EXPLAINER_CONTENT["mape_explanation"])
                 
                 with col2:
                     fig = go.Figure(go.Indicator(
@@ -292,10 +425,27 @@ if predict_button:
             valid_data = df[df["Covers"].notna()]
             
             if not valid_data.empty:
+                total_covers = valid_data['Covers'].sum()
+                baseline_low, baseline_high = BASELINE_STATS["weekly_covers_range"]
+                
+                # Context banner
+                if total_covers < baseline_low:
+                    st.info(f"📉 Quiet week expected ({total_covers:.0f} covers vs baseline {baseline_low}-{baseline_high})")
+                elif total_covers > baseline_high:
+                    st.success(f"📈 Busy week expected ({total_covers:.0f} covers vs baseline {baseline_low}-{baseline_high})")
+                else:
+                    st.info(f"📊 Standard week ({total_covers:.0f} covers, baseline {baseline_low}-{baseline_high})")
+                
                 summary_cols = st.columns(4)
                 
                 with summary_cols[0]:
-                    st.metric("Total Covers", f"{valid_data['Covers'].sum():.0f}")
+                    delta_vs_baseline = total_covers - ((baseline_low + baseline_high) / 2)
+                    st.metric(
+                        "Total Covers", 
+                        f"{total_covers:.0f}",
+                        delta=f"{delta_vs_baseline:+.0f} vs avg.",
+                        help=f"Historical weekly baseline: {baseline_low}-{baseline_high} covers"
+                    )
                 with summary_cols[1]:
                     st.metric("Avg per Service", f"{valid_data['Covers'].mean():.0f}")
                 with summary_cols[2]:
@@ -364,6 +514,17 @@ if predict_button:
                     hide_index=True
                 )
                 
+                # MAPE legend
+                st.caption("**MAPE Legend:** ✅ < 15% (Excellent) | ⚠️ 15-25% (Acceptable) | ⚠️ > 25% (High variance)")
+                
+                # Metrics explanation for weekly view
+                with st.expander("📊 Understand metrics", expanded=False):
+                    tab1, tab2 = st.tabs(["Confidence", "MAPE"])
+                    with tab1:
+                        st.markdown(EXPLAINER_CONTENT["confidence_explanation"])
+                    with tab2:
+                        st.markdown(EXPLAINER_CONTENT["mape_explanation"])
+                
                 # Errors
                 errors = df[df["Error"].notna()]
                 if not errors.empty:
@@ -376,29 +537,57 @@ else:
     # Default state
     st.info("👈 Configure parameters and click **Get Prediction** to see results")
     
-    # Demo card
+    # Demo section
+    col_demo1, col_demo2 = st.columns(2)
+    
+    with col_demo1:
+        st.markdown("""
+        ### 🎯 What does this tool do?
+        
+        Predicts the number of **covers** (customers) for a hotel restaurant service.
+        
+        **Usage:**
+        1. Select a date and service
+        2. Get a prediction with confidence level
+        3. Review staffing recommendation
+        4. Understand the "why" via AI explanation
+        """)
+    
+    with col_demo2:
+        st.markdown("""
+        ### 📊 Based on what?
+        
+        | Data | Source |
+        |------|--------|
+        | Historical patterns | 495 patterns (dataset 2015-2017) |
+        | Similarity | Vector search Qdrant |
+        | Reasoning | Claude AI (Anthropic) |
+        | Embeddings | Mistral AI |
+        """)
+    
+    st.divider()
+    
+    # Quick stats
+    st.markdown("### 📈 Reference Statistics")
+    
+    ref_cols = st.columns(4)
+    with ref_cols[0]:
+        st.metric("Available Patterns", "495")
+    with ref_cols[1]:
+        st.metric("Avg dinner/day", "35 covers")
+    with ref_cols[2]:
+        st.metric("Avg lunch/day", "22 covers")
+    with ref_cols[3]:
+        st.metric("Avg breakfast/day", "28 covers")
+    
+    st.divider()
+    
+    # Links
     st.markdown("""
-    ### How it works
-    
-    1. **Select a date** — Choose the service date you want to predict
-    2. **Choose service type** — Lunch, dinner, or brunch
-    3. **Get prediction** — Our AI analyzes similar historical patterns
-    4. **Review reasoning** — Understand WHY the prediction was made
-    
-    ---
-    
-    ### About
-    
-    This dashboard uses **RAG (Retrieval-Augmented Generation)** to find similar historical patterns 
-    and predict demand. The system considers:
-    
-    - 📅 Day of week & seasonality
-    - 🎉 Local events
-    - 🌤️ Weather conditions
-    - 🏨 Hotel occupancy patterns
-    
-    [View API Documentation](https://ivandemurard-fb-agent-api.hf.space/docs) | 
-    [GitHub Repository](https://github.com/ivandemurard/fb-agent)
+    **Useful links:**
+    [📖 API Documentation](https://ivandemurard-fb-agent-api.hf.space/docs) | 
+    [💻 GitHub Repository](https://github.com/ivandemurard/fb-agent) |
+    [👤 Portfolio](https://ivandemurard.com)
     """)
 
 # Footer
