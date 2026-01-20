@@ -404,77 +404,97 @@ Weather: {weather.get('condition', 'Unknown')}, {weather.get('temperature', 'N/A
 Events nearby: {events_str}
 Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 'None'}"""
 
-    def _get_embedding(self, text: str) -> List[float]:
-        """Get embedding from Mistral"""
-        response = self.mistral_client.embeddings.create(
-            model="mistral-embed",
-            inputs=[text]
-        )
-        return response.data[0].embedding
+    async def _get_embedding(self, text: str) -> List[float]:
+        """
+        Get embedding from Mistral (async-safe)
+        
+        Uses asyncio.to_thread() to run the synchronous API call in a thread pool,
+        preventing blocking of the event loop.
+        """
+        def _sync_get_embedding() -> List[float]:
+            """Synchronous embedding call to be run in thread pool"""
+            response = self.mistral_client.embeddings.create(
+                model="mistral-embed",
+                inputs=[text]
+            )
+            return response.data[0].embedding
+        
+        # Run synchronous call in thread pool to avoid blocking event loop
+        return await asyncio.to_thread(_sync_get_embedding)
 
-    def _search_qdrant(self, embedding: List[float], service_type: str, limit: int = 5) -> List:
-        """Search Qdrant for similar patterns using query_points (new API)"""
+    async def _search_qdrant(self, embedding: List[float], service_type: str, limit: int = 5) -> List:
+        """
+        Search Qdrant for similar patterns using query_points (new API) - async-safe
+        
+        Uses asyncio.to_thread() to run the synchronous Qdrant call in a thread pool,
+        preventing blocking of the event loop.
+        """
         import logging
         logger = logging.getLogger("uvicorn")
         
-        try:
-            # Build filter for service type
-            search_filter = Filter(
-                must=[
-                    FieldCondition(
-                        key="service_type",
-                        match=MatchValue(value=service_type)
-                    )
-                ]
-            )
-            
-            # Use query_points method (new qdrant-client API v1.16.0+)
-            # query_points replaces the deprecated search() method
-            results = self.qdrant_client.query_points(
-                collection_name="fb_patterns",
-                query=embedding,  # query_points uses 'query' instead of 'query_vector'
-                query_filter=search_filter,
-                limit=limit,
-                with_payload=True
-            )
-            
-            # query_points returns a QueryResponse, extract points
-            if hasattr(results, 'points'):
-                return results.points
-            elif isinstance(results, list):
-                return results
-            else:
-                # Fallback: try to get points from response object
-                return list(results) if results else []
-                
-        except Exception as e:
-            # Try without filter if filter fails
-            logger.warning(f"[PATTERNS] Filter search failed: {e}, trying without filter")
-            _write_debug_log(f"[PATTERNS] Filter search failed: {e}, trying without filter")
+        def _sync_search_qdrant() -> List:
+            """Synchronous Qdrant search to be run in thread pool"""
             try:
+                # Build filter for service type
+                search_filter = Filter(
+                    must=[
+                        FieldCondition(
+                            key="service_type",
+                            match=MatchValue(value=service_type)
+                        )
+                    ]
+                )
+                
+                # Use query_points method (new qdrant-client API v1.16.0+)
+                # query_points replaces the deprecated search() method
                 results = self.qdrant_client.query_points(
                     collection_name="fb_patterns",
-                    query=embedding,
-                    limit=limit * 2,  # Get more results to filter manually
+                    query=embedding,  # query_points uses 'query' instead of 'query_vector'
+                    query_filter=search_filter,
+                    limit=limit,
                     with_payload=True
                 )
-                # Extract points from response
-                if hasattr(results, 'points'):
-                    points = results.points
-                elif isinstance(results, list):
-                    points = results
-                else:
-                    points = list(results) if results else []
                 
-                # Filter results manually by service_type
-                filtered_results = [r for r in points if r.payload.get("service_type") == service_type]
-                return filtered_results[:limit]
-            except Exception as e2:
-                logger.error(f"[PATTERNS] Query without filter also failed: {e2}")
-                _write_debug_log(f"[PATTERNS] Query without filter also failed: {e2}")
-                import traceback
-                _write_debug_log(f"[PATTERNS] Traceback: {traceback.format_exc()}")
-                raise e2
+                # query_points returns a QueryResponse, extract points
+                if hasattr(results, 'points'):
+                    return results.points
+                elif isinstance(results, list):
+                    return results
+                else:
+                    # Fallback: try to get points from response object
+                    return list(results) if results else []
+                    
+            except Exception as e:
+                # Try without filter if filter fails
+                logger.warning(f"[PATTERNS] Filter search failed: {e}, trying without filter")
+                _write_debug_log(f"[PATTERNS] Filter search failed: {e}, trying without filter")
+                try:
+                    results = self.qdrant_client.query_points(
+                        collection_name="fb_patterns",
+                        query=embedding,
+                        limit=limit * 2,  # Get more results to filter manually
+                        with_payload=True
+                    )
+                    # Extract points from response
+                    if hasattr(results, 'points'):
+                        points = results.points
+                    elif isinstance(results, list):
+                        points = results
+                    else:
+                        points = list(results) if results else []
+                    
+                    # Filter results manually by service_type
+                    filtered_results = [r for r in points if r.payload.get("service_type") == service_type]
+                    return filtered_results[:limit]
+                except Exception as e2:
+                    logger.error(f"[PATTERNS] Query without filter also failed: {e2}")
+                    _write_debug_log(f"[PATTERNS] Query without filter also failed: {e2}")
+                    import traceback
+                    _write_debug_log(f"[PATTERNS] Traceback: {traceback.format_exc()}")
+                    raise e2
+        
+        # Run synchronous call in thread pool to avoid blocking event loop
+        return await asyncio.to_thread(_sync_search_qdrant)
 
     def _qdrant_hit_to_pattern(self, hit) -> Pattern:
         """Convert Qdrant search hit to Pattern object"""
@@ -615,8 +635,8 @@ Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 
                 context_str = self._build_context_string(request, context)
                 _write_debug_log(f"[PATTERNS] Context: {context_str[:100]}...")
                 
-                # Get embedding
-                embedding = self._get_embedding(context_str)
+                # Get embedding (async-safe)
+                embedding = await self._get_embedding(context_str)
                 
                 # Get service type as string and map to Qdrant values
                 service_type = request.service_type.value if hasattr(request.service_type, 'value') else str(request.service_type)
@@ -624,8 +644,8 @@ Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 
                 if service_type == "brunch":
                     service_type = "breakfast"
                 
-                # Search Qdrant
-                hits = self._search_qdrant(embedding, service_type, limit=5)
+                # Search Qdrant (async-safe)
+                hits = await self._search_qdrant(embedding, service_type, limit=5)
                 
                 if hits:
                     patterns = [self._qdrant_hit_to_pattern(hit) for hit in hits]
