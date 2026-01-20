@@ -655,7 +655,12 @@ Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 
             return {
                 "predicted_covers": 120,
                 "confidence": 0.60,
-                "method": "fallback"
+                "method": "fallback",
+                "accuracy_metrics": {
+                    "method": "fallback",
+                    "estimated_mape": None,
+                    "note": "No patterns available for estimation"
+                }
             }
         
         # Weighted average calculation
@@ -667,11 +672,57 @@ Holiday: {context.get('holiday_name', 'None') if context.get('is_holiday') else 
         avg_similarity = total_weight / len(patterns)
         confidence = round(avg_similarity, 2)
         
+        # Calculate accuracy metrics
+        accuracy_metrics = self._estimate_accuracy_metrics(patterns, predicted_covers)
+        
         return {
             "predicted_covers": predicted_covers,
             "confidence": confidence,
             "method": "weighted_average",
-            "patterns_count": len(patterns)
+            "patterns_count": len(patterns),
+            "accuracy_metrics": accuracy_metrics
+        }
+    
+    def _estimate_accuracy_metrics(self, patterns: List[Pattern], predicted_covers: int) -> Dict:
+        """
+        Estimate accuracy metrics based on pattern variance.
+        
+        Note: This is an ESTIMATE based on similar pattern spread, not actual backtesting.
+        Real MAPE requires historical predictions vs actual outcomes.
+        """
+        if not patterns or len(patterns) < 2:
+            return {
+                "method": "rag_weighted_average",
+                "estimated_mape": None,
+                "note": "Insufficient patterns for variance estimation"
+            }
+        
+        # Calculate variance in similar patterns
+        covers = [p.actual_covers for p in patterns]
+        mean_covers = sum(covers) / len(covers)
+        
+        # Estimate MAPE from pattern spread (proxy for prediction uncertainty)
+        # Logic: if similar patterns vary by X%, our prediction likely has X% error
+        if mean_covers > 0:
+            deviations = [abs(c - mean_covers) / mean_covers * 100 for c in covers]
+            estimated_mape = round(sum(deviations) / len(deviations), 1)
+        else:
+            estimated_mape = None
+        
+        # Calculate prediction interval (±)
+        if covers:
+            min_covers = min(covers)
+            max_covers = max(covers)
+            interval = (min_covers, max_covers)
+        else:
+            interval = None
+        
+        return {
+            "method": "rag_weighted_average",
+            "estimated_mape": estimated_mape,
+            "prediction_interval": interval,
+            "patterns_analyzed": len(patterns),
+            "note": "Estimated from similar pattern variance, not backtested"
         }
 
 
