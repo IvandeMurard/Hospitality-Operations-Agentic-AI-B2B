@@ -170,49 +170,103 @@ See `requirements.txt` for Python dependencies.
 
 ## 📈 Roadmap
 
-### ✅ Phase 1: COMPLETE Backend API with mock patterns
+### ✅ Phase 1 — Backend API with mock patterns (BEFORE — done)
 
-**Backend API with mock patterns**
+**Goal:** Ship a first end-to-end agent that can generate contextual staffing predictions from mock patterns.
 
+Delivered:
 - Multi-agent system (Demand Predictor, Staff Recommender, Reasoning Engine)
 - Context-aware mock data generation (events, weather, holidays)
 - Confidence scoring + explainable reasoning
 - Integration test suite (7 scenarios)
 - HuggingFace Spaces deployment
 
-### ✅ Phase 2: COMPLETE — RAG Implementation
+Timeline status:  
+- **Before** → This phase moved the project from idea to a working backend with realistic mocked scenarios.
 
-**Real pattern-based predictions**
+---
 
+### ✅ Phase 2 — RAG Implementation with real patterns (BEFORE — done)
+
+**Goal:** Replace mock patterns with real F&B behaviour extracted from hotel booking data.
+
+Delivered:
 - Kaggle Hotel Booking dataset processed (119K reservations → 495 F&B patterns)
 - Qdrant vector database seeded with Mistral embeddings (1024 dim)
-- Semantic similarity search replaces mock data
-- Validation tests passing (4/4 scenarios)
+- Semantic similarity search powering predictions
+- Validation tests passing on 4/4 core scenarios
 - Live API deployed with real vector search
 
-**Technical details:**
-- Patterns derived from meal plans, day types, weather, events, holidays
-- Cosine similarity scoring (typical: 0.92-0.95)
-- Fallback to mock if Qdrant unavailable
+Technical details:
+- Patterns derived from meal plans, day types, seasons, booking behaviour
+- Cosine similarity scoring (typically 0.92–0.95)
+- Safe fallback to mock data if Qdrant is unavailable
 
-### 📋 Phase 3: Dashboard & Integrations (Next)
+Timeline status:  
+- **Before** → The agent now relies on real historical patterns instead of hard-coded mocks.
 
-**Production-ready interface & real data**
+---
 
-- Dashboard UI (Streamlit/Next.js) for prediction visualization
-- Real PMS integration (APIs)
-- Event & Weather APIs (PredictHQ, OpenWeather)
-- Manager approval workflows
-- Historical accuracy tracking
+### 🔁 Phase 3 — Productisation & Observability (NOW)
 
-### 🔮 Phase 4: Agentic Features (Future)
+**Goal:** Move from “cool API demo” to something that looks and behaves like a product F&B managers could trust.
 
-**Advanced AI capabilities**
+Currently working on:
+- Clarifying the F&B value story:
+  - reframing outputs in business terms (labor hours, margin, guest experience)
+- Designing the **manager-in-the-loop** workflow:
+  - how managers approve, override, or comment on predictions
+- Defining accuracy & impact metrics:
+  - prediction vs actual covers
+  - implications on staffing decisions
+- Improving observability:
+  - logging of predictions and explanations
+  - tracking which historical patterns are retrieved for each decision
 
-- Conversational interface (ElevenLabs)
-- Query layer for natural language data access
-- Design partner program
-- Build in public campaign
+Timeline status:  
+- **Now** → Focus is on credibility and usability for real hotel teams.
+
+---
+
+### 📋 Phase 4 — Dashboard & PMS Integrations (NEXT)
+
+**Goal:** Build the first end-to-end experience that a hotel team could use day-to-day.
+
+Planned next steps:
+- Dashboard UI (Streamlit or Next.js) to:
+  - visualize predictions vs actuals
+  - inspect confidence scores and retrieved patterns
+- Manager workflows:
+  - approve / override staffing recommendations
+  - log edits as feedback for the agent
+- PMS-ready data model:
+  - align entities with API-first systems like Mews and Apaleo
+  - first experiments pulling real occupancy / reservations via PMS APIs
+- Multi-property support for hotel groups
+
+Timeline status:  
+- **Next** → From infrastructure + API to a usable F&B operations tool.
+
+---
+
+### 🔮 Phase 5 — Agentic Operations Copilot (LATER)
+
+**Goal:** Turn the F&B forecasting agent into a broader operations copilot for hospitality.
+
+Longer-term ideas:
+- Conversational interface (text + voice):
+  - “What staffing do you recommend for Saturday dinner if the weather turns bad?”
+  - “Show me services where we were overstaffed vs actual covers.”
+- Proactive behaviour:
+  - alerts for future under/over-staffed services vs historical norms
+  - suggestions to adjust staffing or opening hours
+- Extensions beyond F&B:
+  - housekeeping workload forecasting
+  - front desk peak prediction
+  - simple, explainable agent workflows built on top of PMS APIs
+
+Timeline status:  
+- **Later** → Expanding a focused F&B agent into a general hospitality operations copilot.
 
 ---
 
