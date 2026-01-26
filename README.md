@@ -127,8 +127,6 @@ An **agentic AI system** that autonomously predicts staffing needs using:
 
 ```
 
----
-
 ## ⚙️ Configuration
 
 The system requires the following environment variables:
