@@ -125,7 +125,7 @@ An **agentic AI system** that autonomously predicts staffing needs using:
 
 **Interactive Documentation:** [https://ivandemurard-fb-agent-api.hf.space/docs](https://ivandemurard-fb-agent-api.hf.space/docs)
 
-```
+---
 
 ## ⚙️ Configuration
 
