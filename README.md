@@ -153,7 +153,7 @@ See `requirements.txt` for Python dependencies.
 
 ## 📈 Roadmap
 
-### ✅ Phase 1 — Backend API with mock patterns (BEFORE — done)
+### ✅ Phase 1 - Backend API with mock patterns (BEFORE - done)
 
 **Goal:** Ship a first end-to-end agent that can generate contextual staffing predictions from mock patterns.
 
@@ -169,7 +169,7 @@ Timeline status:
 
 ---
 
-### ✅ Phase 2 — RAG Implementation with real patterns (BEFORE — done)
+### ✅ Phase 2 - RAG Implementation with real patterns (BEFORE - done)
 
 **Goal:** Replace mock patterns with real F&B behaviour extracted from hotel booking data.
 
@@ -190,7 +190,7 @@ Timeline status:
 
 ---
 
-### 🔁 Phase 3 — Productisation & Observability (NOW)
+### 🔁 Phase 3 - Productisation & Observability (NOW)
 
 **Goal:** Move from “cool API demo” to something that looks and behaves like a product F&B managers could trust.
 
@@ -211,7 +211,7 @@ Timeline status:
 
 ---
 
-### 📋 Phase 4 — Dashboard & PMS Integrations (NEXT)
+### 📋 Phase 4 - Dashboard & PMS Integrations (NEXT)
 
 **Goal:** Build the first end-to-end experience that a hotel team could use day-to-day.
 
@@ -232,7 +232,7 @@ Timeline status:
 
 ---
 
-### 🔮 Phase 5 — Agentic Operations Copilot (LATER)
+### 🔮 Phase 5 - Agentic Operations Copilot (LATER)
 
 **Goal:** Turn the F&B forecasting agent into a broader operations copilot for hospitality.
 
