@@ -204,7 +204,7 @@ with st.expander("How it works", expanded=False):
 st.divider()
 
 # Data timestamp
-st.caption(f"Data as of {datetime.now().strftime('%B %d, %Y at %H:%M')} | Patterns: {BASELINE_STATS['patterns_count']} | Period: {BASELINE_STATS['data_period']}")
+st.caption(f"📡 Data as of {datetime.now().strftime('%B %d, %Y at %H:%M')} | Patterns: {BASELINE_STATS['patterns_count']} | Period: {BASELINE_STATS['data_period']}")
 
 # Sidebar - Input
 with st.sidebar:
@@ -593,7 +593,7 @@ if predict_button:
                         "Service": st.column_config.TextColumn("Service", help="Meal service type"),
                         "Covers": st.column_config.NumberColumn("Covers", help="Predicted number of customers"),
                         "Expected Range": st.column_config.TextColumn("Expected Range", help="Min-max covers based on similar historical patterns"),
-                        "Reliability": st.column_config.TextColumn("Reliability", help="Prediction reliability based on MAPE: Excellent <15% | Acceptable 15-25% | Monitor 25-40% | Low >40%")
+                        "Reliability": st.column_config.TextColumn("Reliability", help="Prediction reliability based on MAPE: 🟢 <15% | 🟡 15-25% | 🟠 25-40% | 🔴 >40%")
                     }
                 )
                 
