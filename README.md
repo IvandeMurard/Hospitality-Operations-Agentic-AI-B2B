@@ -167,31 +167,31 @@ Delivered:
 ### 🔄 Phase 3 - Dashboard & Feedback Loop (Current)
 
 In progress:
-- **Restaurant Profile** — Capacity, breakeven, staff ratios configuration
-- **Post-service Feedback** — Actual covers input to close the loop
-- **Accuracy Tracking** — Real MAPE calculation, visible learning progress
-- **UI Anti-Slop** — Factor visibility, human context, contextual recommendations
-- **Data Sources UI** — Transparent architecture roadmap in Settings
+- **Restaurant Profile**: Capacity, breakeven, staff ratios configuration
+- **Post-service Feedback**: Actual covers input to close the loop
+- **Accuracy Tracking**: Real MAPE calculation, visible learning progress
+- **UI Anti-Slop**: Factor visibility, human context, contextual recommendations
+- **Data Sources UI**: Transparent architecture roadmap in Settings
 
 Linear issues: IVA-52, IVA-53, IVA-54, IVA-55, IVA-56
 
 ### 📋 Phase 4 - Semantic Layer & Integrations (Next)
 
 Planned:
-- **PMS Adapter Pattern** — Unified interface for Mews, Opera, Protel
-- **Real PMS Connection** — First live integration (likely Mews)
-- **Weather & Events APIs** — PredictHQ, OpenWeather integration
-- **Multi-property Support** — Hotel groups with multiple outlets
+- **PMS Adapter Pattern**: Unified interface for Mews, Opera, Protel
+- **Real PMS Connection**: First live integration (likely Mews)
+- **Weather & Events APIs**: PredictHQ, OpenWeather integration
+- **Multi-property Support**: Hotel groups with multiple F&B operations
 
 Linear issues: IVA-47
 
 ### 🔮 Phase 5 - Ambient AX (Later)
 
 Vision:
-- **Conversational Interface** — Daily briefings via WhatsApp/Slack/Teams
-- **Proactive Alerts** — "Tomorrow looks busy, consider +1 server"
-- **Natural Feedback** — Reply with actual covers, agent learns
-- **Voice Interface** — Optional ElevenLabs integration
+- **Conversational Interface**: Monthly/weekly briefings via WhatsApp/Slack/Teams
+- **Proactive Alerts**: "Next month looks busy, consider +1 server."
+- **Natural Feedback**: Reply with actual covers, and the agent learns
+- **Voice Interface**: Voice feature integration (ElevenLabs or other)
 
 Linear issues: IVA-57
 
