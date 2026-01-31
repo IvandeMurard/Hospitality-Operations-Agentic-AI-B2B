@@ -48,7 +48,7 @@ Restaurant managers in hotels spend **5-8 hours/week** manually forecasting staf
 
 ---
 
-## 💡 Solution I'm building:
+## 💡 The solution I'm working on:
 
 An **intelligence layer** for hotel managers that:
 - **Connects to any PMS** through a semantic abstraction layer (Mews, Opera, Apaleo, Protel, Cloudbeds, ...)
