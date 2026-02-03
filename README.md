@@ -96,7 +96,7 @@ An **intelligence layer** for hotel managers that:
 ## ✨ Key Features
 
 **🧠 Contextual Predictions**
-- Combines external signals (city events, weather, holidays) with internal data (occupancy, past demand)
+- Combines external signals (city events, weather, holidays, real-time social sentiment) with internal data (occupancy, past demand)
 - Qdrant vector search finds similar historical patterns
 - Claude AI generates explainable reasoning
 
