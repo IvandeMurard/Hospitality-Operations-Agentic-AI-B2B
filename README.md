@@ -1,5 +1,5 @@
 ---
-title: F&B Operations Agent
+title: Aetherix
 emoji: 🍽️
 colorFrom: blue
 colorTo: purple
