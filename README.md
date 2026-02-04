@@ -46,7 +46,7 @@ An agent that:
 ### Architecture (3 Layers)
 
 ┌─────────────────────────────────────────────────────────────┐
-│                  F&B AMBIENT AGENT                          │
+│                  F&B AGENT                                  │
 ├─────────────────────────────────────────────────────────────┤
 │ INTELLIGENCE LAYER (RAG + Reasoning)                        │
 │ • Demand Predictor (Qdrant vector search + Mistral embeds)  │
