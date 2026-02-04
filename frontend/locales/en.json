@@ -29,7 +29,18 @@
     },
     "loading": {
         "week": "Loading week forecast...",
-        "month": "Loading month forecast..."
+        "month": "Loading month forecast...",
+        "step_data_error": "Could not load historical data. Please try again.",
+        "step_patterns_error": "Could not analyze patterns. Please try again.",
+        "step_events_error": "Could not check local events. Please try again.",
+        "step_similar_error": "Could not find similar days. Please try again.",
+        "step_confidence_error": "Could not calculate confidence. Please try again.",
+        "step_staff_error": "Could not generate recommendation. Please check your connection and try again.",
+        "step_week_data_error": "Could not load week data. Please try again.",
+        "step_week_patterns_error": "Could not analyze week patterns. Please try again.",
+        "step_week_process_error": "Could not process days. Please try again.",
+        "step_week_totals_error": "Could not calculate totals. Please try again.",
+        "forecast_failed": "Forecast failed"
     },
     "welcome": {
         "title": "Welcome to Aetherix",

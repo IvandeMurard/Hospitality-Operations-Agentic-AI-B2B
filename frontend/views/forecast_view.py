@@ -336,13 +336,19 @@ def render_forecast_view(context: dict) -> None:
 
     if view == "day" and cache_key not in st.session_state.prediction_cache:
         steps = [dict(s) for s in PREDICTION_STEPS]
-        steps[-1]["action"] = lambda: fetch_prediction(
-            date=selected_date,
-            restaurant=context["restaurant"],
-            service=context["service"],
-        )
-        prediction = render_loading_steps(steps)
-        st.session_state.prediction_cache[cache_key] = prediction
+        def safe_fetch_day():
+            r = fetch_prediction(
+                date=selected_date,
+                restaurant=context["restaurant"],
+                service=context["service"],
+            )
+            if r is None:
+                raise RuntimeError("prediction_failed")
+            return r
+        steps[-1]["action"] = safe_fetch_day
+        prediction = render_loading_steps(steps, lang=lang)
+        if prediction is not None:
+            st.session_state.prediction_cache[cache_key] = prediction
     elif view == "day":
         prediction = st.session_state.prediction_cache.get(cache_key)
     else:
@@ -358,13 +364,19 @@ def render_forecast_view(context: dict) -> None:
         week_cache_key = f"{week_start.strftime('%Y-%m-%d')}_{context['restaurant']}_{context['service']}"
         if week_cache_key not in st.session_state.week_predictions_cache:
             steps = [dict(s) for s in WEEK_PREDICTION_STEPS]
-            steps[-1]["action"] = lambda: get_week_predictions(
-                start_date=week_start,
-                restaurant=context["restaurant"],
-                service=context["service"],
-            )
-            week_predictions = render_loading_steps(steps)
-            st.session_state.week_predictions_cache[week_cache_key] = week_predictions
+            def safe_fetch_week():
+                r = get_week_predictions(
+                    start_date=week_start,
+                    restaurant=context["restaurant"],
+                    service=context["service"],
+                )
+                if not r:
+                    raise RuntimeError("week_data_failed")
+                return r
+            steps[-1]["action"] = safe_fetch_week
+            week_predictions = render_loading_steps(steps, lang=lang)
+            if week_predictions:
+                st.session_state.week_predictions_cache[week_cache_key] = week_predictions
         else:
             week_predictions = st.session_state.week_predictions_cache[week_cache_key]
         _render_kpi_cards_week(lang, week_predictions or [])
