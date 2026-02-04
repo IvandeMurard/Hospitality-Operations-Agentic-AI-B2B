@@ -98,9 +98,6 @@ def render_loading_steps(
     </div>
     """
     steps_placeholder.markdown(final_html, unsafe_allow_html=True)
-    
-    # Show "Forecast ready" briefly (1.5 seconds) then clear the placeholder
-    time.sleep(1.5)
     steps_placeholder.empty()
 
     return result

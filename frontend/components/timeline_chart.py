@@ -216,7 +216,9 @@ def get_month_predictions(
             norm = _normalize_prediction(p, dates, start_date, i)
             if norm:
                 normalized.append({
-                    "date": p.get("date") or p.get("service_date") or dates[i],
+                    "date": p.get("date") or p.get("service_date") or (
+                        dates[i] if i < len(dates) else (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
+                    ),
                     "predicted_covers": norm["covers"],
                     "confidence": norm["confidence"],
                 })

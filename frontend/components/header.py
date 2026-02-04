@@ -116,9 +116,11 @@ def render_header(lang: str = "en") -> dict:
                 months = months_fr if lang == "fr" else months_en
                 current_year = date.today().year
                 years = list(range(current_year - 2, current_year + 3))
+                if current.year not in years:
+                    years.append(current.year)
+                    years.sort()
+                year_idx = years.index(current.year)
                 month_1 = current.month - 1
-                year_idx = current.year - years[0] if years and current.year in years else 0
-                year_idx = max(0, min(year_idx, len(years) - 1))
 
                 mc, yc = st.columns(2)
                 with mc:
