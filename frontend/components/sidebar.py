@@ -1,102 +1,175 @@
 """Aetherix Sidebar Component"""
 
 import streamlit as st
-from config import BRAND_NAME, get_text
+from config import get_text
 
 
 def render_sidebar(lang: str = "en") -> dict:
     """
-    Render the Aetherix sidebar.
+    Render the Aetherix sidebar with pure white text and button-based nav.
 
     Returns:
-        dict with selected values: {
-            "page": str,
-            "restaurant": str,
-            "service": str,
-            "language": str
-        }
+        dict with: page, restaurant, service, language
     """
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = "forecast"
+
     with st.sidebar:
-        # Brand
+        # ===== BRAND (FIRST, LARGE) =====
         st.markdown(
-            f"""
+            """
             <div style="margin-bottom: 2rem;">
-                <h1 style="color: white; font-size: 1.5rem; font-weight: 700; margin: 0;">
-                    {BRAND_NAME}
-                </h1>
+                <h1 style="
+                    color: #FFFFFF;
+                    font-size: 2rem;
+                    font-weight: 700;
+                    margin: 0;
+                    padding: 0;
+                    letter-spacing: -0.02em;
+                ">Aetherix</h1>
+                <p style="
+                    color: rgba(255,255,255,0.8);
+                    font-size: 0.875rem;
+                    margin: 0.25rem 0 0 0;
+                    font-weight: 400;
+                ">Intelligent forecasting</p>
             </div>
         """,
             unsafe_allow_html=True,
         )
 
-        # Navigation
+        # ===== NAVIGATION =====
         st.markdown(
-            '<p class="section-header">Navigation</p>', unsafe_allow_html=True
+            """
+            <p style="
+                color: rgba(255,255,255,0.6);
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                margin-bottom: 0.5rem;
+            ">Navigation</p>
+        """,
+            unsafe_allow_html=True,
         )
 
-        page = st.radio(
-            label="nav",
-            options=["forecast", "history", "settings"],
-            format_func=lambda x: get_text(f"nav.{x}", lang),
-            label_visibility="collapsed",
-            key="nav_radio",
-        )
+        nav_items = [
+            ("forecast", get_text("nav.forecast", lang), "📊"),
+            ("history", get_text("nav.history", lang), "📈"),
+            ("settings", get_text("nav.settings", lang), "⚙️"),
+        ]
 
+        for page_id, label, _icon in nav_items:
+            is_active = st.session_state.current_page == page_id
+            if is_active:
+                st.markdown(
+                    f"""
+                    <div style="
+                        background-color: rgba(255,255,255,0.15);
+                        border-radius: 6px;
+                        padding: 0.6rem 0.75rem;
+                        margin-bottom: 0.25rem;
+                    ">
+                        <span style="color: #FFFFFF; font-weight: 500;">
+                            {label}
+                        </span>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
+            else:
+                if st.button(label, key=f"nav_{page_id}", use_container_width=True):
+                    st.session_state.current_page = page_id
+                    st.rerun()
+
+        st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
         st.divider()
 
-        # Context
+        # ===== CONTEXT =====
         st.markdown(
-            '<p class="section-header">Context</p>', unsafe_allow_html=True
+            """
+            <p style="
+                color: rgba(255,255,255,0.6);
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                margin-bottom: 0.5rem;
+            ">Context</p>
+        """,
+            unsafe_allow_html=True,
         )
 
+        st.markdown(
+            """
+            <p style="color: #FFFFFF; font-size: 0.75rem; margin-bottom: 0.25rem;">
+                Restaurant
+            </p>
+        """,
+            unsafe_allow_html=True,
+        )
         restaurant = st.selectbox(
-            label=get_text("sidebar.restaurant", lang),
+            label="Restaurant",
             options=["Main Restaurant", "Pool Bar", "Room Service"],
+            label_visibility="collapsed",
             key="restaurant_select",
         )
 
+        st.markdown(
+            """
+            <p style="color: #FFFFFF; font-size: 0.75rem; margin-bottom: 0.25rem; margin-top: 0.75rem;">
+                Service
+            </p>
+        """,
+            unsafe_allow_html=True,
+        )
         service = st.selectbox(
-            label=get_text("sidebar.service", lang),
+            label="Service",
             options=["Breakfast", "Lunch", "Dinner"],
-            index=2,  # Default to Dinner
+            index=2,
+            label_visibility="collapsed",
             key="service_select",
         )
 
+        st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
         st.divider()
 
-        # Data status
-        st.markdown(
-            '<p class="section-header">Data</p>', unsafe_allow_html=True
-        )
-
+        # ===== DATA STATUS =====
         st.markdown(
             """
-            <div style="color: rgba(255,255,255,0.8); font-size: 0.875rem;">
-                <div style="margin-bottom: 0.5rem;">
-                    <span style="color: rgba(255,255,255,0.5);">Patterns:</span> 495
-                </div>
-                <div style="margin-bottom: 0.5rem;">
-                    <span style="color: rgba(255,255,255,0.5);">Period:</span> 2015-2017
-                </div>
-                <div>
-                    <span style="color: rgba(255,255,255,0.5);">Updated:</span> 2h ago
-                </div>
+            <p style="
+                color: rgba(255,255,255,0.6);
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                margin-bottom: 0.75rem;
+            ">Data</p>
+            <div style="color: #FFFFFF; font-size: 0.875rem; line-height: 1.8;">
+                <div><span style="color: rgba(255,255,255,0.6);">Patterns:</span> 495</div>
+                <div><span style="color: rgba(255,255,255,0.6);">Period:</span> 2015-2017</div>
+                <div><span style="color: rgba(255,255,255,0.6);">Updated:</span> 2h ago</div>
             </div>
         """,
             unsafe_allow_html=True,
         )
 
+        st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
         st.divider()
 
-        # Coming Soon
-        st.markdown(
-            '<p class="section-header">Coming Soon</p>',
-            unsafe_allow_html=True,
-        )
-
+        # ===== COMING SOON =====
         st.markdown(
             """
-            <div class="coming-soon" style="font-size: 0.875rem; line-height: 1.8;">
+            <p style="
+                color: rgba(255,255,255,0.6);
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                margin-bottom: 0.75rem;
+            ">Coming Soon</p>
+            <div style="
+                color: rgba(255,255,255,0.5);
+                font-size: 0.85rem;
+                font-style: italic;
+                line-height: 1.8;
+            ">
                 ◇ PMS Integration<br>
                 ◇ Staff Planner<br>
                 ◇ Inventory<br>
@@ -106,16 +179,19 @@ def render_sidebar(lang: str = "en") -> dict:
             unsafe_allow_html=True,
         )
 
+        st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
         st.divider()
 
-        # Footer
+        # ===== FOOTER =====
         col1, col2 = st.columns(2)
         with col1:
             st.markdown(
                 """
-                <a href="#" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.875rem;">
-                    ? Help
-                </a>
+                <a href="#" style="
+                    color: rgba(255,255,255,0.7);
+                    text-decoration: none;
+                    font-size: 0.875rem;
+                ">? Help</a>
             """,
                 unsafe_allow_html=True,
             )
@@ -130,7 +206,7 @@ def render_sidebar(lang: str = "en") -> dict:
             )
 
     return {
-        "page": page,
+        "page": st.session_state.current_page,
         "restaurant": restaurant,
         "service": service,
         "language": language,

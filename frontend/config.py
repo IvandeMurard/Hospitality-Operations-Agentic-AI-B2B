@@ -46,118 +46,104 @@ AETHERIX_CSS = """
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* Hide ALL Streamlit UI */
+    #MainMenu, footer, header {visibility: hidden;}
+    [data-testid="stSidebarNav"] {display: none !important;}
     
     /* ===== SIDEBAR ===== */
     [data-testid="stSidebar"] {
-        background-color: #1B4332;
-        padding-top: 0.5rem;
+        background-color: #1B4332 !important;
     }
     
     [data-testid="stSidebar"] > div:first-child {
-        padding-top: 0.5rem;
+        padding-top: 1.5rem;
     }
     
-    /* Sidebar text - white */
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] span,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 {
-        color: white !important;
+    /* ALL SIDEBAR TEXT - PURE WHITE */
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] * {
+        color: #FFFFFF !important;
     }
     
-    /* Sidebar labels */
-    [data-testid="stSidebar"] label {
-        color: rgba(255,255,255,0.7) !important;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+    /* Sidebar buttons - transparent, left-align, white text */
+    [data-testid="stSidebar"] .stButton > button {
+        background-color: transparent;
+        border: none;
+        color: #FFFFFF !important;
+        text-align: left;
+        padding: 0.6rem 0.75rem;
+        width: 100%;
+        justify-content: flex-start;
     }
     
-    /* Sidebar radio buttons - white text */
-    [data-testid="stSidebar"] [data-testid="stRadio"] label {
-        color: white !important;
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background-color: rgba(255,255,255,0.1);
     }
     
-    [data-testid="stSidebar"] [data-testid="stRadio"] label p,
-    [data-testid="stSidebar"] [data-testid="stRadio"] label div {
-        color: white !important;
+    /* Sidebar dropdowns - readable */
+    [data-testid="stSidebar"] .stSelectbox > div > div {
+        background-color: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
     }
     
     /* Sidebar dividers */
     [data-testid="stSidebar"] hr {
-        border-color: rgba(255,255,255,0.2);
+        border-color: rgba(255,255,255,0.15);
         margin: 1rem 0;
     }
     
     /* ===== MAIN CONTENT ===== */
     
-    /* All main content text - dark */
+    /* Headings */
     .stApp h1, .stApp h2, .stApp h3, .stApp h4 {
         color: #212529 !important;
     }
     
+    /* Body text */
     .stApp p {
         color: #495057;
     }
     
-    /* Form labels in main content - dark */
+    /* Form labels */
     .stApp .stTextInput label,
     .stApp .stNumberInput label,
     .stApp .stSelectbox label,
     .stApp .stTextArea label {
         color: #495057 !important;
-        font-size: 0.875rem;
-        font-weight: 500;
     }
     
-    /* Radio buttons in main content - dark text */
-    .stApp [data-testid="stRadio"] label {
-        color: #212529 !important;
-    }
-    
+    /* Radio buttons in main content */
+    .stApp [data-testid="stRadio"] label,
     .stApp [data-testid="stRadio"] label p,
-    .stApp [data-testid="stRadio"] label div,
     .stApp [data-testid="stRadio"] label span {
         color: #212529 !important;
-    }
-    
-    /* Override for sidebar (more specific) */
-    [data-testid="stSidebar"] [data-testid="stRadio"] label,
-    [data-testid="stSidebar"] [data-testid="stRadio"] label p,
-    [data-testid="stSidebar"] [data-testid="stRadio"] label div,
-    [data-testid="stSidebar"] [data-testid="stRadio"] label span {
-        color: white !important;
     }
     
     /* ===== KPI CARDS ===== */
     div[data-testid="stMetric"] {
         background-color: white;
-        padding: 1rem 1.25rem;
+        padding: 1.25rem;
         border-radius: 8px;
         border: 1px solid #E9ECEF;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     
     div[data-testid="stMetric"] label {
         color: #6C757D !important;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
     
     div[data-testid="stMetric"] [data-testid="stMetricValue"] {
         color: #212529 !important;
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 600;
-    }
-    
-    div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
-        color: #40916C !important;
     }
     
     /* ===== BUTTONS ===== */
@@ -166,63 +152,27 @@ AETHERIX_CSS = """
         color: white;
         border: none;
         border-radius: 6px;
-        padding: 0.5rem 1rem;
         font-weight: 500;
     }
     
     .stButton > button:hover {
         background-color: #1B4332;
-        border: none;
     }
     
-    /* ===== VIEW TOGGLE (Day/Week/Month) ===== */
-    /* Style as pill buttons */
-    div[data-testid="stHorizontalBlock"] [data-testid="stRadio"] > div {
+    /* ===== VIEW TOGGLE ===== */
+    [data-testid="stRadio"][data-testid*="view"] > div {
         gap: 0;
     }
     
-    div[data-testid="stHorizontalBlock"] [data-testid="stRadio"] > div > label {
-        background-color: white;
-        border: 1px solid #DEE2E6;
-        padding: 0.5rem 1rem;
-        margin: 0;
-        cursor: pointer;
-        color: #495057 !important;
-    }
-    
-    div[data-testid="stHorizontalBlock"] [data-testid="stRadio"] > div > label:first-child {
-        border-radius: 6px 0 0 6px;
-    }
-    
-    div[data-testid="stHorizontalBlock"] [data-testid="stRadio"] > div > label:last-child {
-        border-radius: 0 6px 6px 0;
-    }
-    
-    /* ===== SECTION HEADERS ===== */
-    .section-header {
-        color: rgba(255,255,255,0.5) !important;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        margin-bottom: 0.75rem;
-    }
-    
-    /* ===== COMING SOON ===== */
-    .coming-soon {
-        color: rgba(255,255,255,0.4) !important;
-        font-style: italic;
-    }
-    
-    /* ===== INFO BOXES (placeholders) ===== */
-    .stAlert {
-        background-color: #E8F4FD;
-        border: 1px solid #B8DAFF;
+    /* ===== CHARTS ===== */
+    .js-plotly-plot {
         border-radius: 8px;
     }
     
-    /* ===== CHECKBOX ===== */
-    .stCheckbox label {
-        color: #495057 !important;
+    /* Loading animation */
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 </style>
 """

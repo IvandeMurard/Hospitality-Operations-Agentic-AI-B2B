@@ -130,10 +130,12 @@ import math
 from backend.models.schemas import (
     PredictionRequest,
     PredictionResponse,
+    BatchPredictionRequest,
     Reasoning,
     StaffRecommendation,
     StaffDelta,
-    AccuracyMetrics
+    AccuracyMetrics,
+    ServiceType,
 )
 from backend.agents.demand_predictor import get_demand_predictor
 from backend.api.prediction_store import store_prediction_for_feedback
@@ -333,6 +335,58 @@ async def create_prediction(request: PredictionRequest):
         error_detail = str(e).encode('utf-8', errors='replace').decode('utf-8', errors='replace')
         logger.error(f"[PREDICT] Error: {error_detail}")
         raise HTTPException(status_code=500, detail=error_detail)
+
+
+@app.post("/predict/batch")
+async def create_prediction_batch(request: BatchPredictionRequest):
+    """
+    Generate predictions for multiple dates at once.
+    More efficient than calling /predict multiple times.
+    Max 31 dates per request.
+    """
+    import logging
+    logger = logging.getLogger("uvicorn")
+    MAX_DATES = 31
+    dates = request.dates[:MAX_DATES]
+    try:
+        st_enum = ServiceType(request.service_type.lower())
+    except (ValueError, AttributeError):
+        st_enum = ServiceType.DINNER
+
+    predictions = []
+    for d in dates:
+        try:
+            service_date = date.fromisoformat(d)
+        except ValueError:
+            continue
+        single = PredictionRequest(
+            restaurant_id=request.restaurant_id,
+            service_date=service_date,
+            service_type=st_enum,
+        )
+        try:
+            resp = await create_prediction(single)
+            out = resp.model_dump()
+            out["date"] = d
+            out["service_date"] = d
+            predictions.append(out)
+        except Exception as e:
+            logger.warning(f"[PREDICT/BATCH] Skip date {d}: {e}")
+            predictions.append({
+                "date": d,
+                "service_date": d,
+                "predicted_covers": 0,
+                "confidence": 0.0,
+                "accuracy_metrics": {"prediction_interval": [0, 0]},
+                "staff_recommendation": {},
+            })
+    return {
+        "predictions": predictions,
+        "count": len(predictions),
+        "service_type": request.service_type,
+        "restaurant_id": request.restaurant_id,
+    }
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,0 +1,141 @@
+# Guide de déploiement Streamlit Cloud - Dashboard Aetherix
+
+Ce guide te permet de déployer le dashboard Streamlit sur [Streamlit Community Cloud](https://share.streamlit.io).
+
+---
+
+## 📋 Prérequis
+
+1. **Repository GitHub** : Ton code doit être poussé sur GitHub
+   - Repo actuel : `IvandeMurard/Hospitality-Operations-Agentic-AI-B2B` (ou le repo où se trouve `frontend/app.py`)
+2. **Compte Streamlit Cloud** : Connecte-toi avec ton compte GitHub sur [share.streamlit.io](https://share.streamlit.io)
+
+---
+
+## 🚀 Configuration dans Streamlit Cloud
+
+### Étape 1 : Nouvelle App
+
+1. Va sur [share.streamlit.io](https://share.streamlit.io)
+2. Clique sur **"New app"** ou **"Deploy an app"**
+
+### Étape 2 : Configuration de base
+
+Remplis les champs suivants :
+
+| Champ | Valeur |
+|------|--------|
+| **Repository** | `IvandeMurard/Hospitality-Operations-Agentic-AI-B2B` (ou ton repo GitHub) |
+| **Branch** | `master` (ou la branche où se trouve ton code) |
+| **Main file path** | **`frontend/app.py`** ⚠️ (pas `streamlit_app.py` !) |
+| **App URL (optional)** | `aetherix` (donnera `aetherix.streamlit.app`) |
+
+### Étape 3 : Advanced Settings
+
+Clique sur **"Advanced settings"** et configure :
+
+#### Python version
+```
+3.11
+```
+*(Correspond à la version du backend)*
+
+#### Secrets (Variables d'environnement)
+
+Dans la section **"Secrets"**, ajoute en format TOML :
+
+```toml
+AETHERIX_API_BASE = "https://ivandemurard-fb-agent-api.hf.space"
+```
+
+**Important** : 
+- Pas de slash final (`/`) à la fin de l'URL
+- L'URL doit être accessible publiquement (ton API HuggingFace Spaces)
+
+---
+
+## ✅ Vérification
+
+Après le déploiement :
+
+1. **URL de l'app** : `https://aetherix.streamlit.app` (ou l'URL que tu as choisie)
+2. **Test** : 
+   - Ouvre le dashboard
+   - Va sur la page "Forecast"
+   - Sélectionne une date et clique sur "Get Prediction"
+   - Vérifie que les données s'affichent (appel à l'API HuggingFace)
+
+---
+
+## 🔧 Dépannage
+
+### Erreur "This file does not exist"
+- **Cause** : Le chemin du fichier principal est incorrect
+- **Solution** : Vérifie que `Main file path` = `frontend/app.py` (avec le préfixe `frontend/`)
+
+### Erreur de connexion à l'API
+- **Cause** : `AETHERIX_API_BASE` mal configuré ou API HuggingFace non accessible
+- **Solution** : 
+  1. Vérifie que l'API répond : `curl https://ivandemurard-fb-agent-api.hf.space/health`
+  2. Vérifie le secret `AETHERIX_API_BASE` dans Advanced Settings (pas de slash final)
+  3. Vérifie les logs Streamlit Cloud pour voir les erreurs exactes
+
+### Erreur d'import Python
+- **Cause** : Dépendances manquantes ou chemin d'import incorrect
+- **Solution** : 
+  - Vérifie que `frontend/requirements.txt` contient toutes les dépendances
+  - Streamlit Cloud installe automatiquement depuis `requirements.txt` à la racine du repo OU dans le même dossier que `app.py`
+  - Si `requirements.txt` est dans `frontend/`, il sera trouvé automatiquement
+
+### Python version incompatible
+- **Cause** : Version Python différente de celle du backend
+- **Solution** : Utilise Python **3.11** dans Advanced Settings pour correspondre au backend
+
+---
+
+## 📝 Structure attendue dans le repo
+
+Streamlit Cloud cherche :
+- Le fichier principal : `frontend/app.py` (selon ton `Main file path`)
+- Les dépendances : `frontend/requirements.txt` (automatiquement détecté)
+
+Si ton repo a cette structure :
+```
+repo/
+├── frontend/
+│   ├── app.py          ← Fichier principal
+│   ├── requirements.txt
+│   ├── config.py
+│   ├── components/
+│   └── views/
+└── backend/
+```
+
+Alors `Main file path` = `frontend/app.py` ✅
+
+---
+
+## 🔄 Mise à jour après déploiement
+
+Streamlit Cloud redéploie automatiquement à chaque push sur la branche configurée (`master` par défaut).
+
+Pour forcer un redéploiement manuel :
+1. Va dans les settings de l'app sur Streamlit Cloud
+2. Clique sur **"Reboot app"** ou **"Redeploy"**
+
+---
+
+## 🎯 Résumé des valeurs à utiliser
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Repository | `IvandeMurard/Hospitality-Operations-Agentic-AI-B2B` |
+| Branch | `master` |
+| Main file path | **`frontend/app.py`** |
+| App URL | `aetherix` |
+| Python version | `3.11` |
+| Secret `AETHERIX_API_BASE` | `https://ivandemurard-fb-agent-api.hf.space` |
+
+---
+
+Une fois déployé, ton dashboard sera accessible publiquement et appellera automatiquement ton API HuggingFace Spaces ! 🎉

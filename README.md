@@ -142,7 +142,7 @@ An **intelligence layer** for hotel managers that:
 
 **Interactive Documentation:** [https://ivandemurard-fb-agent-api.hf.space/docs](https://ivandemurard-fb-agent-api.hf.space/docs)
 
-**Dashboard:** Coming soon
+**Dashboard:** Coming soon (déploiement : voir [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))
 
 ---
 

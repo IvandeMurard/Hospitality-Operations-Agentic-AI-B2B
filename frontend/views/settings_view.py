@@ -1,4 +1,4 @@
-"""Aetherix Settings Page - Restaurant Profile Configuration (IVA-52)"""
+"""Settings view - restaurant profile configuration."""
 
 import streamlit as st
 import requests
@@ -6,28 +6,25 @@ import requests
 from config import get_text, API_BASE
 
 
-def render_settings_page(lang: str = "en"):
-    """Render the settings page with restaurant profile form"""
-
+def render_settings_view(context: dict) -> None:
+    """Render the settings page with restaurant profile form."""
+    lang = context["language"]
     st.title(get_text("nav.settings", lang))
 
-    # Try to load existing profile
     try:
-        response = requests.get(f"{API_BASE}/api/restaurant/profiles", timeout=5)
+        response = requests.get(
+            f"{API_BASE}/api/restaurant/profiles", timeout=5
+        )
         profiles = response.json() if response.status_code == 200 else []
     except Exception:
         profiles = []
         st.warning("Unable to connect to backend. Settings will not be saved.")
 
-    # If profiles exist, load the first one (single-tenant for MVP)
     existing_profile = profiles[0] if profiles else None
 
-    # Check for industry defaults from button click (previous run)
     industry_defaults = st.session_state.get("industry_defaults")
     if industry_defaults:
-        # Merge defaults with existing profile for form defaults
         form_defaults = {**(existing_profile or {}), **industry_defaults}
-        # Clear so next load uses saved data
         if "industry_defaults" in st.session_state:
             del st.session_state["industry_defaults"]
     else:
@@ -42,7 +39,6 @@ def render_settings_page(lang: str = "en"):
 
     with st.form("restaurant_profile_form"):
         st.subheader("Restaurant Profile")
-
         col1, col2 = st.columns(2)
 
         with col1:
@@ -51,7 +47,6 @@ def render_settings_page(lang: str = "en"):
                 value=_val("property_name", ""),
                 placeholder="The Grand Hotel",
             )
-
             outlet_name = st.text_input(
                 "Restaurant Name",
                 value=_val("outlet_name", ""),
@@ -64,7 +59,6 @@ def render_settings_page(lang: str = "en"):
                 min_value=1,
                 value=_int("total_seats", 80),
             )
-
             outlet_options = ["restaurant", "bar", "room_service", "pool_bar"]
             outlet_type_val = _val("outlet_type", "restaurant")
             outlet_index = (
@@ -80,9 +74,7 @@ def render_settings_page(lang: str = "en"):
 
         st.divider()
         st.subheader("Business Thresholds")
-
         col1, col2 = st.columns(2)
-
         with col1:
             breakeven_covers = st.number_input(
                 "Break-even Covers",
@@ -90,7 +82,6 @@ def render_settings_page(lang: str = "en"):
                 value=_int("breakeven_covers", 35),
                 help="Minimum covers needed to cover fixed costs",
             )
-
         with col2:
             target_covers = st.number_input(
                 "Target Covers",
@@ -102,30 +93,25 @@ def render_settings_page(lang: str = "en"):
         st.divider()
         st.subheader("Staffing Ratios")
         st.caption("How many covers can each staff member handle?")
-
         col1, col2, col3, col4 = st.columns(4)
-
         with col1:
             covers_per_server = st.number_input(
                 "Per Server",
                 min_value=1,
                 value=_int("covers_per_server", 16),
             )
-
         with col2:
             covers_per_host = st.number_input(
                 "Per Host",
                 min_value=1,
                 value=_int("covers_per_host", 60),
             )
-
         with col3:
             covers_per_runner = st.number_input(
                 "Per Runner",
                 min_value=1,
                 value=_int("covers_per_runner", 40),
             )
-
         with col4:
             covers_per_kitchen = st.number_input(
                 "Per Kitchen",
@@ -134,14 +120,12 @@ def render_settings_page(lang: str = "en"):
             )
 
         col1, col2 = st.columns(2)
-
         with col1:
             min_foh_staff = st.number_input(
                 "Minimum FOH Staff",
                 min_value=1,
                 value=_int("min_foh_staff", 2),
             )
-
         with col2:
             min_boh_staff = st.number_input(
                 "Minimum Kitchen Staff",
@@ -150,11 +134,8 @@ def render_settings_page(lang: str = "en"):
             )
 
         st.divider()
-
-        # Coming Soon: Integrations
         st.subheader("Integrations")
         st.caption("COMING SOON", help="Connect your PMS and POS for automatic data sync")
-
         col1, col2 = st.columns(2)
         with col1:
             st.checkbox("Mews PMS", disabled=True)
@@ -164,8 +145,6 @@ def render_settings_page(lang: str = "en"):
             st.checkbox("Toast POS", disabled=True)
 
         st.markdown("---")
-
-        # Submit
         submitted = st.form_submit_button("Save Changes", type="primary")
 
         if submitted:
@@ -183,7 +162,6 @@ def render_settings_page(lang: str = "en"):
                 "min_foh_staff": min_foh_staff,
                 "min_boh_staff": min_boh_staff,
             }
-
             try:
                 if existing_profile:
                     response = requests.put(
@@ -197,7 +175,6 @@ def render_settings_page(lang: str = "en"):
                         json=profile_data,
                         timeout=10,
                     )
-
                 if response.status_code in [200, 201]:
                     st.success("Settings saved successfully!")
                     st.rerun()
@@ -206,10 +183,8 @@ def render_settings_page(lang: str = "en"):
             except Exception as e:
                 st.error(f"Connection error: {e}")
 
-    # Industry defaults buttons (outside form)
     st.markdown("---")
     st.caption("Not sure about staffing ratios?")
-
     col1, col2, col3 = st.columns(3)
 
     def _apply_defaults(restaurant_type: str):
@@ -229,11 +204,9 @@ def render_settings_page(lang: str = "en"):
     with col1:
         if st.button("Use Fine Dining Defaults"):
             _apply_defaults("fine_dining")
-
     with col2:
         if st.button("Use Casual Dining Defaults"):
             _apply_defaults("casual_dining")
-
     with col3:
         if st.button("Use Hotel Restaurant Defaults"):
             _apply_defaults("hotel_restaurant")

@@ -34,6 +34,13 @@ class PredictionRequest(BaseModel):
     service_type: ServiceType = Field(..., description="Type of service")
 
 
+class BatchPredictionRequest(BaseModel):
+    """Request model for batch prediction endpoint"""
+    dates: List[str] = Field(..., description="List of dates YYYY-MM-DD (max 31)")
+    service_type: str = Field(..., description="e.g. dinner, lunch")
+    restaurant_id: str = Field(..., description="Restaurant identifier")
+
+
 class Pattern(BaseModel):
     """Similar pattern from history"""
     pattern_id: str
