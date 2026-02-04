@@ -11,12 +11,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![HF Spaces](https://img.shields.io/badge/HuggingFace-Spaces-blueviolet)](https://huggingface.co/spaces/ivandemurard/fb-agent-api)
 
-**Live Dashboard (Phase 3 MVP)** → https://aetherix.streamlit.app/
+**Live Dashboard (Phase 3 Prototype)** → https://aetherix.streamlit.app/
 
-### Real Problem (Hospitality 2026)
+### Problem
 Restaurant managers spend **5–8 hours/week** on manual forecasting with ~**70%** accuracy → over/under-staffing, food waste, operational stress.
 
-### Solution: Ambient AI Colleague
+### Solution: (Ambient) AI Colleague
 An agent that:
 - **Anticipates** demand (covers, staffing, purchases) using RAG + external signals (weather, events, holidays, real-time social sentiment)
 - **Explains** its predictions (impact %, confidence score)
@@ -25,11 +25,11 @@ An agent that:
 - **PMS-agnostic**: semantic layer connects Mews, Opera, Apaleo, Cloudbeds, etc. without lock-in
 
 | Classic Dashboard            | Ambient Agent (Aetherix)              |
-|------------------------------|----------------------------------------|
+|------------------------------|---------------------------------------|
 | You have to remember to check| Agent proactively sends you the brief |
-| Painful context switching    | Integrated into your daily tools       |
-| Feedback = separate step     | Natural correction in conversation     |
-| PMS + external data silos    | Semantic unification + contextual RAG  |
+| Painful context switching    | Integrated into your daily tools      |
+| Feedback = separate step     | Natural correction in conversation    |
+| PMS + external data silos    | Semantic unification + contextual RAG |
 
 ### Quick Look at the Current Interface (Phase 3 – MVP Dashboard)
 <!-- Replace these placeholders with your real screenshots as soon as possible – huge impact boost -->
@@ -50,13 +50,13 @@ An agent that:
 ├─────────────────────────────────────────────────────────────┤
 │ INTELLIGENCE LAYER (RAG + Reasoning)                        │
 │ • Demand Predictor (Qdrant vector search + Mistral embeds)  │
-│ • Claude Sonnet 4 – Explanations & confidence scoring       │
-│ • Feedback → continuous pattern fine-tuning                 │
+│ • Claude Sonnet 4 - Explanations & confidence scoring       │
+│ • Feedback Loop → continuous pattern fine-tuning            │
 ├─────────────────────────────────────────────────────────────┤
 │ SEMANTIC LAYER (PMS-Agnostic)                               │
-│ • Unified model across all PMS                              │
-│ • Adapters (Mews, Opera, Cloudbeds…)                        │
-│ • External signals (PredictHQ, OpenWeather…)                │
+│ • Unified model across all PMS used                         │
+│ • Adapts (Mews, Opera, Cloudbeds…)                          │
+│ • External signals (X, PredictHQ, OpenWeather…)             │
 ├─────────────────────────────────────────────────────────────┤
 │ DELIVERY LAYER (Ambient)                                    │
 │ • Streamlit Dashboard (config, analytics)                   │
@@ -64,13 +64,13 @@ An agent that:
 └─────────────────────────────────────────────────────────────┘
 
 
-### Tech Stack (2026-ready)
+### Tech Stack
 
 - **Backend**: FastAPI · Python 3.11
 - **AI**: Claude Sonnet 4 (Anthropic) · Mistral Embeddings
 - **Vector DB**: Qdrant Cloud (495 patterns indexed)
 - **Storage**: Supabase (PostgreSQL) · Redis (cache & sessions)
-- **Frontend MVP**: Streamlit · (Next.js planned for v2)
+- **Frontend MVP**: Streamlit · (Next.js planned for V2)
 - **Deploy**: Hugging Face Spaces (Docker)
 
 ### Early Results (Phase 3 – synthetic/mock data)
@@ -96,7 +96,7 @@ An agent that:
 
 **Looking for**: Feedback!, partnerships, beta hotels (even with mock data), **a product role in hotel tech**.
 
-Built with ❤️ by Ivan de Murard for hotels and those who love them
+Built with ❤️ by Ivan de Murard for hotels, restaurants, and those who love them
 [Portfolio](https://ivandemurard.com) · [X](https://x.com/ivandemurard) · [LinkedIn](https://linkedin.com/in/ivandemurard) · [Book a Call](https://cal.com/ivandemurard/30min)
 
 MIT License
