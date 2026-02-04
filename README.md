@@ -32,7 +32,7 @@ Most hotel tech adds another screen to check. The F&B Operations Agent takes a d
 | Manager must remember to check | Agent comes to the manager |
 | Context switch required | Lives in existing workflows |
 | Passive data consumption | Active dialogue & continuous learning |
-| Feedback is an extra step | Feedback is a natural reply |
+| Feedback is an extra step | Feedback is a natural process |
 
 **The goal:** An agent that feels like a knowledgeable colleague who messages you with tomorrow's forecast, learns from your corrections, and gets smarter over time, learning from your context.
 
