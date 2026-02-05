@@ -34,23 +34,15 @@ An agent that:
 
 ### Architecture (3 Layers)
 
-┌─────────────────────────────────────────────────────────────┐
-│                  F&B AGENT                                  │
-├─────────────────────────────────────────────────────────────┤
-│ INTELLIGENCE LAYER (RAG + Reasoning)                        │
-│ • Demand Predictor (Qdrant vector search + Mistral embeds)  │
-│ • Claude Sonnet 4 - Explanations & confidence scoring       │
-│ • Feedback Loop → continuous pattern fine-tuning            │
-├─────────────────────────────────────────────────────────────┤
-│ SEMANTIC LAYER (PMS-Agnostic)                               │
-│ • Unified model across all PMS used                         │
-│ • Adapts (Mews, Opera, Cloudbeds…)                          │
-│ • External signals (X, PredictHQ, OpenWeather…)             │
-├─────────────────────────────────────────────────────────────┤
-│ DELIVERY LAYER (Ambient)                                    │
-│ • Streamlit Dashboard (config, analytics)                   │
-│ • WhatsApp / Slack / Teams (alerts & dialogue)              │
-└─────────────────────────────────────────────────────────────┘
+graph TD
+    A[F&B Ambient Agent] --> B[Intelligence Layer<br>RAG + Reasoning]
+    B --> C[• Demand Predictor<br>Qdrant + Mistral embeds<br>• Claude Sonnet 4<br>Explanations & confidence<br>• Feedback → fine-tuning]
+    
+    A --> D[Semantic Layer<br>PMS-Agnostic]
+    D --> E[• Unified model<br>• Adapters: Mews, Opera, Cloudbeds…<br>• External: PredictHQ, OpenWeather…]
+    
+    A --> F[Delivery Layer<br>Ambient]
+    F --> G[• Streamlit Dashboard<br>config & analytics<br>• WhatsApp / Slack / Teams<br>alerts & dialogue]
 
 
 ### Tech Stack
