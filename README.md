@@ -1,7 +1,7 @@
 # Aetherix – F&B Ambient Agent  
 **PMS-agnostic intelligence layer to anticipate staffing & F&B needs in hotels**
 
-> The AI that comes to you (WhatsApp, Slack, Teams) instead of yet another dashboard to check.  
+> (AI) Insights come to and learn from you (WhatsApp, Slack, Teams) instead of yet another dashboard to onboard.  
 > Contextual predictions + feedback loop + explainability, no vendor lock-in.
 
 [![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)](https://www.python.org)
@@ -15,13 +15,13 @@
 ### Real Problem (Hospitality 2026)
 Restaurant managers spend **5–8 hours/week** on manual forecasting with ~**70%** accuracy → over/under-staffing, food waste, operational stress.
 
-### Solution: Ambient AI Colleague
+### Solution: A new (AI) Colleague
 An agent that:
-- **Anticipates** demand (covers, staffing, purchases) using RAG + external signals (weather, events, holidays)
-- **Explains** its predictions (impact %, confidence score)
-- **Learns** from your corrections (feedback loop → accuracy improves over time)
-- **Delivers where you work**: WhatsApp/Slack for daily briefs, dashboard for config & deep dive
-- **PMS-agnostic**: semantic layer connects Mews, Opera, Apaleo, Cloudbeds, etc. without lock-in
+- **Anticipates** demand (covers, staffing, purchases) using RAG + external signals (weather, events, holidays and real-time social sentiment)
+- **Explains** its predictions (impact %, confidence score) for transparency and adoption
+- **Learns** from your corrections and PMS data (feedback loop) for continuous and autonomous improvement
+- **Delivers where you work**: WhatsApp/Slack for quick briefs, dashboard for adoption, config & deep dive
+- **PMS-agnostic**: using a semantic layer connecting Mews, Opera, Apaleo, Cloudbeds, etc. without lock-in. Smart!
 
 | Classic Dashboard            | Ambient Agent (Aetherix)              |
 |------------------------------|----------------------------------------|
@@ -29,18 +29,6 @@ An agent that:
 | Painful context switching    | Integrated into your daily tools       |
 | Feedback = separate step     | Natural correction in conversation     |
 | PMS + external data silos    | Semantic unification + contextual RAG  |
-
-### Quick Look at the Current Interface (Phase 3 – MVP Dashboard)
-<!-- Replace these placeholders with real screenshots/GIFs when ready – huge impact -->
-
-![Restaurant Configuration](https://via.placeholder.com/800x450/1e3a8a/ffffff?text=Config+Restaurant+Profile+%7C+Streamlit+MVP)  
-*Configuration screen: restaurant profile, historical ratios, simulated PMS sources*
-
-![Daily Prediction + Explanation](https://via.placeholder.com/800x450/065f46/ffffff?text=Tomorrow's+Covers+Prediction+%7C+Claude+Explainability)  
-*Explained prediction example: weather impact +30%, events +18%, confidence 82%*
-
-![Feedback Loop](https://via.placeholder.com/800x450/ca8a04/ffffff?text=Feedback+Loop+%7C+Actual+vs+Predicted)  
-*Real covers input + notes → continuous learning*
 
 ### Architecture (3 Layers)
 
@@ -72,30 +60,47 @@ flowchart TD
     style Delivery fill:#ca8a04,stroke:#333,stroke-width:2px,color:#fff
 ```
 
-Tech Stack (2026-ready)Backend: FastAPI · Python 3.11
-AI: Claude Sonnet 4 (Anthropic) · Mistral Embeddings
-Vector DB: Qdrant Cloud (495 patterns indexed)
-Storage: Supabase (PostgreSQL) · Redis (cache & sessions)
-Frontend MVP: Streamlit · (Next.js planned for v2)
-Deploy: Hugging Face Spaces (Docker)
+### Tech Stack (2026-ready)
 
-Early Results (Phase 3 – synthetic/mock data)Initial accuracy (naive baseline): ~68–72%
-With RAG + feedback loop (3 iterations): +7–12% (MAPE down to ~18–22% on tests)
-Simulated time saved: ~4–6 hours/week per restaurant
-Vector search latency: < 300 ms (Qdrant + Mistral)
+- **Backend**: FastAPI · Python 3.11
+- **AI**: Claude Sonnet 4 (Anthropic) · Mistral Embeddings
+- **Vector DB**: Qdrant Cloud (495 patterns indexed)
+- **Storage**: Supabase (PostgreSQL) · Redis (cache & sessions)
+- **Frontend MVP**: Streamlit · (Next.js planned for v2)
+- **Deploy**: Hugging Face Spaces (Docker)
 
-Roadmap Phase 1: Backend API + agents (Q3 2025)
- Phase 2: RAG + 495 patterns (Q4 2025)
- Phase 3: Dashboard + feedback loop (ongoing – Streamlit live)
-□ Phase 4: Semantic layer + real PMS (Mews first)
-□ Phase 5: Full ambient (proactive WhatsApp, voice)
+### Early Results (Phase 3 – Using a Kaggle dataset)
 
-Try It NowInteractive Dashboard → https://aetherix.streamlit.app/
-API + Swagger docs → https://ivandemurard-fb-agent-api.hf.space/docs
-Feedback / beta testing → DM me on X @ivandemurard
- or book a call: https://cal.com/ivandemurard/30min
+- Initial accuracy (naive baseline) : ~68–72%
+- After RAG + feedback loop (3–5 iterations) : **+7–12%** improvement  
+  → MAPE reduced to ~18–22% on tested scenarios
+- Simulated time saved : **~4–6 hours/week** per restaurant
+- Vector search latency : < 300 ms (Qdrant + Mistral combo)
 
-Looking for: beta hotels (even mock data), feedback on ambient UX, PMS integration ideas, product/tech roles in hospitality SaaS.Built with  for hospitality operations – Ivan de Murard
-Portfolio · X
- · LinkedIn · ivandemurard@gmail.comMIT License
+### Roadmap (Linear-style, public view available)
+
+- ✅ Phase 1: Backend API + core agents (Q3 2025)
+- ✅ Phase 2: RAG foundation + 495 historical patterns (Q4 2025)
+- 🚧 Phase 3: Dashboard MVP + feedback loop (ongoing - Streamlit live, test it!)
+- □ Phase 4: Semantic layer + real PMS integrations (Mews first, open to partners)
+- □ Phase 5: Full ambient experience (proactive WhatsApp/Slack, voice input, deeper NLP)
+
+### Try It Now
+
+- **Live interactive dashboard** → https://aetherix.streamlit.app/
+- **API + Swagger interactive docs** → https://ivandemurard-fb-agent-api.hf.space/docs
+- **Share feedback or become a beta tester** → DM me on X @ivandemurard or [Book a call](https://cal.com/ivandemurard/30min)
+
+**Looking for**  
+- Honest feedback on project and UX / ambient delivery  
+- Beta hotels or restaurants (mock data is fine to start)  
+- Ideas or priorities for PMS connectors  
+- A product / AI role in hospitality tech SaaS
+
+**Say Hi!**
+
+Built with ❤️ by Ivan de Murard for hotels, restaurants, and those who love them
+[Portfolio](https://ivandemurard.com) · [X](https://x.com/ivandemurard) · [LinkedIn](https://linkedin.com/in/ivandemurard) · ivandemurard@gmail.com
+
+MIT License
 
