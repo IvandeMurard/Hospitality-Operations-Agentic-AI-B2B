@@ -32,18 +32,25 @@ An agent that:
 | PMS + external data silos    | Semantic unification + contextual RAG |
 
 
+```markdown
 ### Architecture (3 Layers)
 
+```mermaid
 graph TD
     A[F&B Ambient Agent] --> B[Intelligence Layer<br>RAG + Reasoning]
-    B --> C[• Demand Predictor<br>Qdrant + Mistral embeds<br>• Claude Sonnet 4<br>Explanations & confidence<br>• Feedback → fine-tuning]
-    
-    A --> D[Semantic Layer<br>PMS-Agnostic]
-    D --> E[• Unified model<br>• Adapters: Mews, Opera, Cloudbeds…<br>• External: PredictHQ, OpenWeather…]
-    
-    A --> F[Delivery Layer<br>Ambient]
-    F --> G[• Streamlit Dashboard<br>config & analytics<br>• WhatsApp / Slack / Teams<br>alerts & dialogue]
+    B --> C[• Demand Predictor<br>Qdrant vector search + Mistral embeds]
+    B --> D[• Claude Sonnet 4<br>Explanations & confidence scoring]
+    B --> E[• Feedback loop<br>continuous pattern fine-tuning]
 
+    A --> F[Semantic Layer<br>PMS-Agnostic]
+    F --> G[• Unified model across all PMS]
+    F --> H[• Adapters: Mews, Opera, Cloudbeds…]
+    F --> I[• External signals: PredictHQ, OpenWeather…]
+
+    A --> J[Delivery Layer<br>Ambient]
+    J --> K[• Streamlit Dashboard<br>config & analytics]
+    J --> L[• WhatsApp / Slack / Teams<br>alerts & dialogue]
+```
 
 ### Tech Stack
 
