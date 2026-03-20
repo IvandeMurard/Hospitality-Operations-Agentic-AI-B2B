@@ -31,3 +31,12 @@ out/
 # Misc
 .obsidian/
 backend/data/raw/*.csv
+
+# Scratch / temp workspaces (use .tmp/ for local scratchpads)
+.tmp/
+
+# Debug & runtime logs
+*.txt
+!**/README*.txt
+fastapi-backend/search_results.txt
+fastapi-backend/server_log.txt
