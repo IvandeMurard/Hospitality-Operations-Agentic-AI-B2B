@@ -23,6 +23,7 @@ services:
       - ./scripts:/scripts
       - fastapi-venv:/app/.venv
       - ./local-shared-data:/app/shared-data
+      - "C:/Users/IVAN/OneDrive/Documents/Agentic AI Hospitality:/vault"
     depends_on:
       - db
 
