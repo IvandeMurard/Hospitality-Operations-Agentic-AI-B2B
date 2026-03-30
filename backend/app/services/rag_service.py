@@ -1,11 +1,15 @@
-"""
-RAG Service — pgvector retrieval layer (HOS-99).
+"""RAG Service — pgvector retrieval layer (HOS-99).
 
 Replaces the old Qdrant + Mistral stack with a single SQL query against
 the `fb_patterns` table in Supabase (PostgreSQL + pgvector extension).
 
-Embedding generation uses Anthropic's claude-sonnet model via a text
-summary → zero-vector fallback when no API key is configured (dev mode).
+A single SQL query with the pgvector cosine-distance operator (<=>)
+replaces the previous two-hop Qdrant + embedding round-trip, keeping
+p95 latency well within the 500 ms MCP target.
+
+Embedding generation uses a zero-vector fallback when no API key is
+configured (dev mode). Replace `_get_embedding` when a supported
+embedding endpoint is available.
 """
 from __future__ import annotations
 
@@ -24,8 +28,7 @@ _EMBEDDING_DIM = 1536
 
 
 async def _get_embedding(query_text: str) -> List[float]:
-    """
-    Generate a 1536-dim embedding for *query_text*.
+    """Return a 1536-dim embedding for *query_text*.
 
     Currently returns a zero vector as a graceful fallback — pgvector cosine
     distance on zero vectors returns 1.0 (maximum distance) for all rows,
@@ -35,25 +38,10 @@ async def _get_embedding(query_text: str) -> List[float]:
     (e.g. text-embedding-3-small via OpenAI, or a future Anthropic endpoint).
     """
     return [0.0] * _EMBEDDING_DIM
-from __future__ import annotations
-
-import asyncio
-import logging
-import os
-from datetime import date
-from typing import Any, Dict, List
-
-from mistralai import Mistral
-from sqlalchemy import text
-
-from app.db.session import AsyncSessionLocal
-
-logger = logging.getLogger(__name__)
 
 
 class RAGService:
-    """
-    Retrieves similar F&B patterns from the `fb_patterns` pgvector table.
+    """Retrieves similar F&B patterns from the `fb_patterns` pgvector table.
 
     Accepts an injected AsyncSession so callers control the DB transaction.
     Falls back gracefully when no DB session is provided (returns empty list).
@@ -65,32 +53,6 @@ class RAGService:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    RAG Service for pattern retrieval from pgvector (Supabase).
-
-    Replaces the previous Qdrant-based implementation. A single SQL query
-    with the pgvector cosine-distance operator (<=>)  replaces the two-hop
-    Qdrant → embedding round-trip, keeping p95 latency well within the
-    500 ms MCP target.
-    """
-
-    def __init__(self) -> None:
-        mistral_key = os.getenv("MISTRAL_API_KEY")
-        self._mistral = Mistral(api_key=mistral_key) if mistral_key else None
-
-    async def get_embedding(self, text_: str) -> List[float]:
-        """Return a 1024-dimensional Mistral embedding, or zeros in dev/test."""
-        if not self._mistral:
-            return [0.0] * 1024
-        response = await asyncio.to_thread(
-            self._mistral.embeddings.create,
-            model="mistral-embed",
-            inputs=[text_],
-        )
-        return response.data[0].embedding
-
-    @staticmethod
-    def _vec_literal(embedding: List[float]) -> str:
-        return "[" + ",".join(f"{v:.8f}" for v in embedding) + "]"
 
     async def find_similar_patterns(
         self,
@@ -99,8 +61,7 @@ class RAGService:
         tenant_id: Optional[str] = None,
         limit: int = 3,
     ) -> List[Dict[str, Any]]:
-        """
-        Returns up to *limit* patterns ordered by cosine similarity to *query_text*.
+        """Return up to *limit* patterns ordered by cosine similarity to *query_text*.
 
         Filters:
           - service_type must match exactly
@@ -117,9 +78,6 @@ class RAGService:
         embedding = await _get_embedding(query_text)
 
         try:
-            # Build the cosine-distance ORDER BY.  pgvector registers the <=>
-            # operator; on SQLite this will raise an OperationalError which we
-            # catch below and fall back to a simple date-ordered query.
             params: Dict[str, Any] = {
                 "service_type": service_type,
                 "limit": limit,
@@ -149,10 +107,17 @@ class RAGService:
             result = await self._db.execute(sql, params)
             rows = result.mappings().all()
         except Exception as exc:
-            if "no such function" in str(exc).lower() or "no such column" in str(exc).lower() \
-                    or "syntax error" in str(exc).lower() or "operator" in str(exc).lower():
+            low = str(exc).lower()
+            if (
+                "no such function" in low
+                or "no such column" in low
+                or "syntax error" in low
+                or "operator" in low
+            ):
                 # SQLite fallback — return most-recently-added patterns
-                logger.debug("pgvector operator unavailable (SQLite?), using fallback: %s", exc)
+                logger.debug(
+                    "pgvector operator unavailable (SQLite?), using fallback: %s", exc
+                )
                 rows = await self._fallback_select(service_type, tenant_id, limit)
             else:
                 logger.error("RAGService.find_similar_patterns error: %s", exc)
@@ -174,6 +139,28 @@ class RAGService:
             }
             for row in rows
         ]
+
+    # ------------------------------------------------------------------
+    # Helper
+    # ------------------------------------------------------------------
+
+    def build_context_string(
+        self,
+        target_date: date,
+        service_type: str,
+        context: Dict[str, Any],
+    ) -> str:
+        """Build a standardised natural-language string for embedding lookup."""
+        weather = context.get("weather", {})
+        events = context.get("events", [])
+        events_str = ", ".join(e.get("type", "Event") for e in events) or "None"
+        return (
+            f"Date: {target_date.isoformat()}\n"
+            f"Service: {service_type}\n"
+            f"Weather: {weather.get('condition', 'Unknown')}\n"
+            f"Events: {events_str}\n"
+            f"Hotel Occupancy: {context.get('occupancy', 0.8)}\n"
+        )
 
     async def _fallback_select(
         self,
@@ -204,66 +191,3 @@ class RAGService:
         )
         result = await self._db.execute(sql, params)
         return result.mappings().all()
-
-    # ------------------------------------------------------------------
-    # Helper
-    # ------------------------------------------------------------------
-
-    def build_context_string(
-        self,
-        target_date: date,
-        service_type: str,
-        context: Dict[str, Any],
-    ) -> str:
-        """Builds a standardised natural-language string for embedding lookup."""
-        weather = context.get("weather", {})
-        events = context.get("events", [])
-        events_str = ", ".join([e.get("type", "Event") for e in events]) or "None"
-        limit: int = 3,
-    ) -> List[Dict[str, Any]]:
-        """
-        Search fb_patterns in pgvector for semantically similar F&B patterns.
-
-        Returns a list of dicts with keys: id, score (cosine similarity 0–1),
-        payload (JSONB from the patterns table).
-        """
-        embedding = await self.get_embedding(query_text)
-        vec = self._vec_literal(embedding)
-
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                text(
-                    """
-                    SELECT
-                        id,
-                        payload,
-                        1 - (embedding <=> CAST(:vec AS vector)) AS score
-                    FROM fb_patterns
-                    WHERE service_type = :service_type
-                    ORDER BY embedding <=> CAST(:vec AS vector)
-                    LIMIT :limit
-                    """
-                ),
-                {"vec": vec, "service_type": service_type, "limit": limit},
-            )
-            rows = result.fetchall()
-
-        return [
-            {"id": str(row.id), "score": float(row.score), "payload": row.payload}
-            for row in rows
-        ]
-
-    def build_context_string(
-        self, target_date: date, service_type: str, context: Dict[str, Any]
-    ) -> str:
-        """Build a standardised context string for embedding query generation."""
-        weather = context.get("weather", {})
-        events = context.get("events", [])
-        events_str = ", ".join(e.get("type", "Event") for e in events) or "None"
-        return (
-            f"Date: {target_date.isoformat()}\n"
-            f"Service: {service_type}\n"
-            f"Weather: {weather.get('condition', 'Unknown')}\n"
-            f"Events: {events_str}\n"
-            f"Hotel Occupancy: {context.get('occupancy', 0.8)}\n"
-        )
