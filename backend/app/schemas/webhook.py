@@ -27,6 +27,23 @@ class ActionType(str, Enum):
     unknown = "unknown"
 
 
+class FeedbackType(str, Enum):
+    """HOS-106 — WhatsApp thumbs-up/down feedback for the training loop.
+
+    Distinct from ActionType (accept/reject on a specific recommendation):
+    feedback signals are quality ratings on the *alert itself* that feed
+    directly into MemoryService for future model improvement.
+
+    - thumbs_up   : manager confirms the alert was useful / accurate
+    - thumbs_down : manager signals the alert was wrong / unhelpful
+    - none        : message is not a feedback signal
+    """
+
+    thumbs_up = "thumbs_up"
+    thumbs_down = "thumbs_down"
+    none = "none"
+
+
 class QueryStatus(str, Enum):
     """Lifecycle states for a ConversationalQuery row.
 

@@ -22,9 +22,40 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import RestaurantProfile, StaffingRecommendation
-from app.schemas.webhook import ActionType
+from app.schemas.webhook import ActionType, FeedbackType
 
 logger = logging.getLogger(__name__)
+
+
+# HOS-106 — WhatsApp thumbs-up/down aliases recognised as feedback signals.
+# Emoji and common shorthand are supported so managers don't need to type
+# exact keywords.
+_THUMBS_UP_ALIASES = frozenset([
+    "\U0001f44d",   # 👍
+    "\u2705",       # ✅
+    "yes", "good", "correct", "accurate", "parfait", "ok", "oui",
+])
+_THUMBS_DOWN_ALIASES = frozenset([
+    "\U0001f44e",   # 👎
+    "\u274c",       # ❌
+    "no", "bad", "wrong", "incorrect", "faux", "non",
+])
+
+
+def parse_feedback(body: str) -> FeedbackType:
+    """HOS-106 — Detect thumbs-up / thumbs-down feedback in an inbound message.
+
+    Checked *before* parse_action in the webhook route so that a bare "👍"
+    or "yes" is treated as feedback, not as an unknown action.
+
+    Returns FeedbackType.none when the message is not a feedback signal.
+    """
+    normalised = body.strip().lower()
+    if normalised in _THUMBS_UP_ALIASES:
+        return FeedbackType.thumbs_up
+    if normalised in _THUMBS_DOWN_ALIASES:
+        return FeedbackType.thumbs_down
+    return FeedbackType.none
 
 
 def parse_action(body: str) -> ActionType:

@@ -70,7 +70,15 @@ class PredictionEngine:
             logger.warning(f"Could not add French holidays: {e}")
         
         self.regressors = []
+        # Standard external regressors
         for reg in ['weather_score', 'event_impact', 'occupancy']:
+            if reg in df.columns:
+                self.model.add_regressor(reg)
+                self.regressors.append(reg)
+        # HOS-106 — Contextual guest-profile regressors (EHL Cindy Heo)
+        # Included as first-class features, not metadata, because they
+        # correlate directly with F&B cover demand.
+        for reg in ['avg_los', 'avg_party_size', 'intl_guest_ratio', 'arrival_time_score']:
             if reg in df.columns:
                 self.model.add_regressor(reg)
                 self.regressors.append(reg)

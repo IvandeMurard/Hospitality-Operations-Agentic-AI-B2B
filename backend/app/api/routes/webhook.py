@@ -39,8 +39,8 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.schemas.webhook import ActionType, TwilioInboundPayload
-from app.services.action_logger import ActionLoggerService, parse_action
+from app.schemas.webhook import ActionType, FeedbackType, TwilioInboundPayload
+from app.services.action_logger import ActionLoggerService, parse_action, parse_feedback
 from app.services.explainability_service import ExplainabilityService
 from app.services.query_parser import QueryParserService
 
@@ -68,6 +68,20 @@ _TWIML_UNKNOWN = (
     "<?xml version='1.0' encoding='UTF-8'?>"
     "<Response><Message>"
     "Reply ACCEPT or REJECT to action this recommendation."
+    "</Message></Response>"
+)
+
+# HOS-106: WhatsApp feedback loop acknowledgements
+_TWIML_FEEDBACK_UP = (
+    "<?xml version='1.0' encoding='UTF-8'?>"
+    "<Response><Message>"
+    "\U0001f44d Thanks for the feedback! I'll use this to improve future forecasts."
+    "</Message></Response>"
+)
+_TWIML_FEEDBACK_DOWN = (
+    "<?xml version='1.0' encoding='UTF-8'?>"
+    "<Response><Message>"
+    "\U0001f44e Got it — noted as inaccurate. I'll adjust future recommendations."
     "</Message></Response>"
 )
 
@@ -187,6 +201,23 @@ async def twilio_inbound_webhook(
             )
 
     payload = TwilioInboundPayload(From=From, Body=Body, To=To)
+
+    # ---------------------------------------------------------------
+    # HOS-106 — Check for 👍 / 👎 feedback BEFORE action parsing.
+    # Feedback signals are quality ratings on the alert; they feed into
+    # MemoryService as training data and are acknowledged immediately.
+    # ---------------------------------------------------------------
+    feedback = parse_feedback(payload.Body)
+    if feedback != FeedbackType.none:
+        background_tasks.add_task(
+            _bg_store_feedback,
+            from_number=payload.From_,
+            feedback=feedback,
+            db=db,
+        )
+        twiml = _TWIML_FEEDBACK_UP if feedback == FeedbackType.thumbs_up else _TWIML_FEEDBACK_DOWN
+        return _xml_response(twiml)
+
     action = parse_action(payload.Body)
 
     if action != ActionType.unknown:
@@ -213,6 +244,40 @@ async def twilio_inbound_webhook(
         db=db,
     )
     return _xml_response(_TWIML_QUERY_ACK)
+
+
+async def _bg_store_feedback(
+    from_number: str,
+    feedback: FeedbackType,
+    db: AsyncSession,
+) -> None:
+    """HOS-106 — Background task: persist 👍/👎 feedback into MemoryService.
+
+    Resolves the hotel from the manager's phone number and stores the signal
+    into ``operational_memory`` so the prediction model can learn from it.
+    """
+    from sqlalchemy import select as _select
+    from app.db.models import RestaurantProfile
+    from app.services.memory_service import MemoryService  # lazy — avoids top-level mistralai import
+
+    normalised_number = from_number.replace("whatsapp:", "")
+    profile_result = await db.execute(
+        _select(RestaurantProfile).where(
+            RestaurantProfile.phone_number == normalised_number
+        )
+    )
+    profile = profile_result.scalars().first()
+    tenant_id = profile.tenant_id if profile else "unknown"
+
+    feedback_value = "followed" if feedback == FeedbackType.thumbs_up else "rejected"
+    memory = MemoryService(db=db)
+    await memory.learn_from_feedback(tenant_id, "latest_alert", feedback_value)
+    logger.info(
+        "_bg_store_feedback: stored %s feedback for tenant=%s from=%s",
+        feedback_value,
+        tenant_id,
+        from_number,
+    )
 
 
 async def _bg_parse_query(

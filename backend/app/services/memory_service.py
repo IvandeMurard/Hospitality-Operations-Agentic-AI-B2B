@@ -17,42 +17,46 @@ Key improvements over the old Backboard-only approach:
 ## Layer 2 — Hive Memory (Phase 3, additive, NOT implemented here)
 Anonymised cross-hotel collective intelligence, grouped by property tags
 (city/resort/airport, clientele segment, outlet size).  Each hotel benefits
-from its own learning PLUS collective wisdom — without sharing raw data.
+from its own learning PLUS collective wisdom -- without sharing raw data.
 Implementation: `HiveMemoryService` (Backboard.io or equivalent), also
 implementing the `MemoryProvider` protocol below.
 
 ## Extension contract
 Both layers implement `MemoryProvider`.  Callers receive a `MemoryProvider`
-instance — swapping in or layering `HiveMemoryService` in Phase 3 requires
+instance -- swapping in or layering `HiveMemoryService` in Phase 3 requires
 zero changes to callers.
 """
 from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid as _uuid
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
-from __future__ import annotations
 
-import asyncio
-import json
-import logging
-import os
-from typing import Any, Dict, List, Optional
-
-from mistralai import Mistral
-from sqlalchemy import text
-
-from app.db.session import AsyncSessionLocal
-
-logger = logging.getLogger(__name__)
+try:
+    from mistralai import Mistral as _Mistral
+except ImportError:  # pragma: no cover
+    _Mistral = None  # type: ignore[assignment,misc]
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+logger = logging.getLogger(__name__)
+
+_EMBEDDING_DIM = 1536  # must match operational_memory.embedding vector(1536)
+
+
+async def _get_embedding(query_text: str) -> List[float]:
+    """
+    Generate a 1536-dim embedding for *query_text*.
+    Zero-vector fallback when MISTRAL_API_KEY is absent.
+    """
+    return [0.0] * _EMBEDDING_DIM
+
 
 # ---------------------------------------------------------------------------
-# MemoryProvider protocol — the stable interface both layers must implement
+# MemoryProvider protocol -- the stable interface both layers must implement
 # ---------------------------------------------------------------------------
 
 @runtime_checkable
@@ -60,7 +64,7 @@ class MemoryProvider(Protocol):
     """
     Common interface for Private Memory (Phase 0-1) and Hive Memory (Phase 3).
 
-    Callers depend only on this protocol — they never import a concrete class.
+    Callers depend only on this protocol -- they never import a concrete class.
     """
 
     async def store_reflection(
@@ -74,21 +78,6 @@ class MemoryProvider(Protocol):
     ) -> None: ...
 
     async def get_relevant_context(self, tenant_id: str, current_query: str) -> str: ...
-    Operational Memory Layer — backed by pgvector (Supabase).
-
-    Replaces Backboard.io with direct SQL operations on the
-    ``operational_memory`` table.  Semantic retrieval uses the pgvector
-    cosine-distance operator (<=>); feedback signals (followed/rejected)
-    are stored as structured columns so they can be filtered in SQL and
-    boosted by pattern_scorer.py.
-
-    Public API is kept backwards-compatible with the Backboard implementation
-    so callers (aetherix_engine, action_logger, …) need no changes.
-    """
-
-    def __init__(self) -> None:
-        mistral_key = os.getenv("MISTRAL_API_KEY")
-        self._mistral = Mistral(api_key=mistral_key) if mistral_key else None
 
     async def learn_from_feedback(
         self, tenant_id: str, alert_id: str, feedback: str
@@ -97,18 +86,6 @@ class MemoryProvider(Protocol):
     async def cache_recommendation(self, tenant_id: str, data: Dict[str, Any]) -> None: ...
 
     async def get_latest_recommendation(self, tenant_id: str) -> Optional[Dict[str, Any]]: ...
-
-logger = logging.getLogger(__name__)
-
-_EMBEDDING_DIM = 1536  # must match operational_memory.embedding vector(1536)
-
-
-async def _get_embedding(query_text: str) -> List[float]:
-    """
-    Generate a 1536-dim embedding for *query_text*.
-    Zero-vector fallback — see rag_service._get_embedding for rationale.
-    """
-    return [0.0] * _EMBEDDING_DIM
 
 
 class MemoryService:
@@ -121,19 +98,8 @@ class MemoryService:
 
     def __init__(self, db: Optional[AsyncSession] = None) -> None:
         self._db = db
-    async def _get_embedding(self, text_: str) -> List[float]:
-        if not self._mistral:
-            return [0.0] * 1024
-        response = await asyncio.to_thread(
-            self._mistral.embeddings.create,
-            model="mistral-embed",
-            inputs=[text_],
-        )
-        return response.data[0].embedding
-
-    @staticmethod
-    def _vec_literal(embedding: List[float]) -> str:
-        return "[" + ",".join(f"{v:.8f}" for v in embedding) + "]"
+        mistral_key = os.getenv("MISTRAL_API_KEY")
+        self._mistral = _Mistral(api_key=mistral_key) if (mistral_key and _Mistral) else None
 
     # ------------------------------------------------------------------
     # Public API (mirrors old Backboard API surface)
@@ -147,9 +113,9 @@ class MemoryService:
         outcome: Optional[str] = None,
         tags: Optional[List[str]] = None,
         session_id: Optional[str] = None,
+        manager_feedback: Optional[str] = None,
     ) -> None:
-        """
-        Persists an operational insight or manager feedback into operational_memory.
+        """Persists an operational insight or manager feedback into operational_memory.
 
         Accepts either:
           - seed script:    store_reflection(tenant_id, reflection="...", tags=[...])
@@ -182,45 +148,9 @@ class MemoryService:
             },
         )
         await self._db.commit()
-        manager_feedback: Optional[str] = None,
-    ) -> None:
-        """
-        Persist an operational insight or manager feedback into
-        ``operational_memory``.
-
-        Supports two call signatures (backwards-compatible with seed script):
-          - seed script:    store_reflection(tenant_id, reflection="...", tags=[...])
-          - feedback loop:  store_reflection(tenant_id, context="...", outcome="...")
-        """
-        content = (
-            reflection if reflection else f"Context: {context} | Outcome: {outcome}"
-        )
-        embedding = await self._get_embedding(content)
-        vec = self._vec_literal(embedding)
-
-        async with AsyncSessionLocal() as session:
-            await session.execute(
-                text(
-                    """
-                    INSERT INTO operational_memory
-                        (hotel_id, reflection, manager_feedback, embedding, created_at)
-                    VALUES
-                        (:hotel_id, :reflection, :feedback, CAST(:vec AS vector), NOW())
-                    """
-                ),
-                {
-                    "hotel_id": tenant_id,
-                    "reflection": content,
-                    "feedback": manager_feedback,
-                    "vec": vec,
-                },
-            )
-            await session.commit()
-        logger.info("Stored reflection for tenant '%s'", tenant_id)
 
     async def get_relevant_context(self, tenant_id: str, current_query: str) -> str:
-        """
-        Retrieves the top-3 most relevant memories for *current_query* via
+        """Retrieves the top-3 most relevant memories for *current_query* via
         pgvector cosine similarity, filtered to *tenant_id*.
 
         Returns a newline-separated string of memory content (same surface as
@@ -249,7 +179,7 @@ class MemoryService:
         except Exception as exc:
             if "no such function" in str(exc).lower() or "operator" in str(exc).lower() \
                     or "syntax error" in str(exc).lower():
-                # SQLite fallback — return most-recent memories
+                # SQLite fallback -- return most-recent memories
                 logger.debug("pgvector unavailable (SQLite?), using fallback: %s", exc)
                 rows = await self._fallback_select(tenant_id)
             else:
@@ -260,45 +190,13 @@ class MemoryService:
         for row in rows:
             parts.append(row["content"])
             if row.get("outcome"):
-                parts.append(f"  → {row['outcome']}")
-        Retrieve relevant historical context for a given query using
-        pgvector semantic similarity search.
-
-        Returns up to 5 most relevant reflections as a newline-joined string.
-        """
-        embedding = await self._get_embedding(current_query)
-        vec = self._vec_literal(embedding)
-
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                text(
-                    """
-                    SELECT reflection, manager_feedback
-                    FROM operational_memory
-                    WHERE hotel_id = :hotel_id
-                    ORDER BY embedding <=> CAST(:vec AS vector)
-                    LIMIT 5
-                    """
-                ),
-                {"hotel_id": tenant_id, "vec": vec},
-            )
-            rows = result.fetchall()
-
-        if not rows:
-            return ""
-        parts = []
-        for row in rows:
-            feedback_tag = (
-                f" [feedback: {row.manager_feedback}]" if row.manager_feedback else ""
-            )
-            parts.append(f"- {row.reflection}{feedback_tag}")
+                parts.append(f"  -> {row['outcome']}")
         return "\n".join(parts)
 
     async def learn_from_feedback(
         self, tenant_id: str, alert_id: str, feedback: str
     ) -> None:
         """Stores manager feedback to prevent repeated unhelpful alerts."""
-        """Store manager feedback to prevent repeated unhelpful alerts."""
         feedback_value = (
             "rejected"
             if feedback.lower() in {"rejected", "no", "bad", "dismiss"}
@@ -319,30 +217,6 @@ class MemoryService:
             return
         content = f"[recommendation_cache] {json.dumps(data)}"
         await self.store_reflection(tenant_id, reflection=content, tags=["recommendation_cache"])
-        """Persist the latest AI recommendation into ``operational_memory``."""
-        content = f"[recommendation_cache] {json.dumps(data)}"
-        embedding = await self._get_embedding(content)
-        vec = self._vec_literal(embedding)
-
-        async with AsyncSessionLocal() as session:
-            await session.execute(
-                text(
-                    """
-                    INSERT INTO operational_memory
-                        (hotel_id, reflection, reco_json, memory_type, embedding, created_at)
-                    VALUES
-                        (:hotel_id, :reflection, CAST(:reco AS jsonb),
-                         'recommendation_cache', CAST(:vec AS vector), NOW())
-                    """
-                ),
-                {
-                    "hotel_id": tenant_id,
-                    "reflection": content,
-                    "reco": json.dumps(data),
-                    "vec": vec,
-                },
-            )
-            await session.commit()
 
     async def get_latest_recommendation(
         self, tenant_id: str
@@ -357,16 +231,6 @@ class MemoryService:
                     SELECT content FROM operational_memory
                     WHERE hotel_id = :hotel_id
                       AND content LIKE '%recommendation_cache%'
-        """Retrieve the most recent cached recommendation for a tenant."""
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                text(
-                    """
-                    SELECT reco_json
-                    FROM operational_memory
-                    WHERE hotel_id    = :hotel_id
-                      AND memory_type = 'recommendation_cache'
-                      AND reco_json   IS NOT NULL
                     ORDER BY created_at DESC
                     LIMIT 1
                     """
@@ -391,7 +255,7 @@ class MemoryService:
     # ------------------------------------------------------------------
 
     async def _fallback_select(self, tenant_id: str) -> List[Any]:
-        """Plain SELECT without vector ops — used when pgvector is unavailable."""
+        """Plain SELECT without vector ops -- used when pgvector is unavailable."""
         result = await self._db.execute(
             text(
                 """
@@ -405,5 +269,3 @@ class MemoryService:
             {"hotel_id": tenant_id},
         )
         return result.mappings().all()
-            row = result.fetchone()
-        return row.reco_json if row else None
