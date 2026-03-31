@@ -29,8 +29,10 @@ from app.workers.weather_sync import create_weather_scheduler
 
 _weather_scheduler = create_weather_scheduler()
 from app.api.routes import pms, webhooks, auth, dashboard, predictions, reports, weather, baselines, events
+from app.api.routes import mcp_metrics
 from app.db.models import Base
 from app.db.session import engine
+from app.mcp_server import mcp
 from app.workers.weather_sync import start_weather_scheduler, stop_weather_scheduler
 from app.workers.event_sync import start_event_scheduler, stop_event_scheduler
 
@@ -96,6 +98,15 @@ app.include_router(twilio_inbound_webhook.router)
 app.include_router(weather.router, prefix="/api/v1")
 app.include_router(baselines.router, prefix="/api/v1")
 app.include_router(events.router, prefix="/api/v1")
+app.include_router(mcp_metrics.router, prefix="/api/v1")
+
+# ---------------------------------------------------------------------------
+# MCP Server — mount as ASGI sub-app at /mcp (SSE transport)
+# Agents connect via: GET /mcp/sse  (event stream)
+#                     POST /mcp/messages  (tool calls)
+# [Source: HOS-71, CLAUDE.md §Pivot stratégique — Agent-First]
+# ---------------------------------------------------------------------------
+app.mount("/mcp", mcp.sse_app())
 
 
 # ---------------------------------------------------------------------------

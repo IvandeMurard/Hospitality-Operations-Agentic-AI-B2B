@@ -1,86 +1,50 @@
-"""
-RAG Service — pgvector retrieval layer (HOS-99).
+"""RAG Service — pgvector retrieval layer (HOS-99).
 
 Replaces the old Qdrant + Mistral stack with a single SQL query against
 the `fb_patterns` table in Supabase (PostgreSQL + pgvector extension).
 
-Embedding generation uses Anthropic's claude-sonnet model via a text
-summary → zero-vector fallback when no API key is configured (dev mode).
+A single SQL cosine-distance query replaces the two-hop
+Qdrant -> embedding round-trip, keeping p95 latency well within the
+500 ms MCP target.
+
+Embedding generation: Mistral (mistral-embed, 1024d) with zero-vector
+fallback in dev/test when MISTRAL_API_KEY is absent.
 """
-from __future__ import annotations
-
-import logging
-import os
-from datetime import date
-from typing import Any, Dict, List, Optional
-
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
-
-logger = logging.getLogger(__name__)
-
-# Dimension must match the vector(1536) column in fb_patterns.
-_EMBEDDING_DIM = 1536
-
-
-async def _get_embedding(query_text: str) -> List[float]:
-    """
-    Generate a 1536-dim embedding for *query_text*.
-
-    Currently returns a zero vector as a graceful fallback — pgvector cosine
-    distance on zero vectors returns 1.0 (maximum distance) for all rows,
-    which means retrieval degrades to unordered results rather than crashing.
-
-    Replace the body here when a supported embedding endpoint is available
-    (e.g. text-embedding-3-small via OpenAI, or a future Anthropic endpoint).
-    """
-    return [0.0] * _EMBEDDING_DIM
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
 from datetime import date
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from mistralai import Mistral
 from sqlalchemy import text
 
 from app.db.session import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
+# Mistral embedding dimension
+_EMBEDDING_DIM = 1024
+
 
 class RAGService:
-    """
-    Retrieves similar F&B patterns from the `fb_patterns` pgvector table.
+    """Retrieves similar F&B patterns from the `fb_patterns` pgvector table.
 
-    Accepts an injected AsyncSession so callers control the DB transaction.
-    Falls back gracefully when no DB session is provided (returns empty list).
-    """
-
-    def __init__(self, db: Optional[AsyncSession] = None) -> None:
-        self._db = db
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-    RAG Service for pattern retrieval from pgvector (Supabase).
-
-    Replaces the previous Qdrant-based implementation. A single SQL query
-    with the pgvector cosine-distance operator (<=>)  replaces the two-hop
-    Qdrant → embedding round-trip, keeping p95 latency well within the
-    500 ms MCP target.
+    Uses AsyncSessionLocal internally — no session injection required.
+    Falls back gracefully to empty list when DB is unavailable or pgvector
+    operator is missing (e.g. SQLite in unit tests).
     """
 
     def __init__(self) -> None:
+        from mistralai.client import Mistral  # lazy import — optional dependency
         mistral_key = os.getenv("MISTRAL_API_KEY")
         self._mistral = Mistral(api_key=mistral_key) if mistral_key else None
 
     async def get_embedding(self, text_: str) -> List[float]:
         """Return a 1024-dimensional Mistral embedding, or zeros in dev/test."""
         if not self._mistral:
-            return [0.0] * 1024
+            return [0.0] * _EMBEDDING_DIM
         response = await asyncio.to_thread(
             self._mistral.embeddings.create,
             model="mistral-embed",
@@ -99,8 +63,7 @@ class RAGService:
         tenant_id: Optional[str] = None,
         limit: int = 3,
     ) -> List[Dict[str, Any]]:
-        """
-        Returns up to *limit* patterns ordered by cosine similarity to *query_text*.
+        """Return up to *limit* patterns ordered by cosine similarity.
 
         Filters:
           - service_type must match exactly
@@ -110,49 +73,55 @@ class RAGService:
 
         When running against SQLite (tests), the `<=>` operator is unavailable;
         the query falls back to a plain SELECT ordered by creation date.
-        """
-        if self._db is None:
-            return []
 
-        embedding = await _get_embedding(query_text)
+        Returns dicts with keys: id, score, pattern_text, outcome_description,
+        payload (alias for full row data — kept for backward compatibility with
+        callers that do `p.get('payload', p)`).
+        """
+        embedding = await self.get_embedding(query_text)
+        vec = self._vec_literal(embedding)
 
         try:
-            # Build the cosine-distance ORDER BY.  pgvector registers the <=>
-            # operator; on SQLite this will raise an OperationalError which we
-            # catch below and fall back to a simple date-ordered query.
-            params: Dict[str, Any] = {
-                "service_type": service_type,
-                "limit": limit,
-                "embedding": str(embedding),
-            }
-            where_clauses = [
-                "service_type = :service_type",
-                "feedback_status != 'rejected'",
-            ]
-            if tenant_id:
-                where_clauses.append("(tenant_id = :tenant_id OR tenant_id IS NULL)")
-                params["tenant_id"] = tenant_id
+            async with AsyncSessionLocal() as session:
+                params: Dict[str, Any] = {
+                    "service_type": service_type,
+                    "limit": limit,
+                    "vec": vec,
+                }
+                where_clauses = [
+                    "service_type = :service_type",
+                    "feedback_status != 'rejected'",
+                ]
+                if tenant_id:
+                    where_clauses.append(
+                        "(tenant_id = :tenant_id OR tenant_id IS NULL)"
+                    )
+                    params["tenant_id"] = tenant_id
 
-            where_sql = " AND ".join(where_clauses)
-            sql = text(
-                f"""
-                SELECT id, service_type, occupancy_band, day_of_week,
-                       weather_condition, feedback_status, pattern_text,
-                       outcome_description,
-                       embedding <=> CAST(:embedding AS vector) AS similarity
-                FROM fb_patterns
-                WHERE {where_sql}
-                ORDER BY similarity ASC
-                LIMIT :limit
-                """
-            )
-            result = await self._db.execute(sql, params)
-            rows = result.mappings().all()
+                where_sql = " AND ".join(where_clauses)
+                sql = text(
+                    f"""
+                    SELECT id, service_type, occupancy_band, day_of_week,
+                           weather_condition, feedback_status,
+                           pattern_text, outcome_description,
+                           embedding <=> CAST(:vec AS vector) AS similarity
+                    FROM fb_patterns
+                    WHERE {where_sql}
+                    ORDER BY similarity ASC
+                    LIMIT :limit
+                    """
+                )
+                result = await session.execute(sql, params)
+                rows = result.mappings().all()
+
         except Exception as exc:
-            if "no such function" in str(exc).lower() or "no such column" in str(exc).lower() \
-                    or "syntax error" in str(exc).lower() or "operator" in str(exc).lower():
-                # SQLite fallback — return most-recently-added patterns
-                logger.debug("pgvector operator unavailable (SQLite?), using fallback: %s", exc)
+            err = str(exc).lower()
+            if any(
+                kw in err
+                for kw in ("no such function", "no such column", "syntax error", "operator", "no such table")
+            ):
+                # SQLite fallback — return date-ordered patterns (no vector ops)
+                logger.debug("pgvector unavailable (%s), using fallback", exc)
                 rows = await self._fallback_select(service_type, tenant_id, limit)
             else:
                 logger.error("RAGService.find_similar_patterns error: %s", exc)
@@ -162,14 +131,18 @@ class RAGService:
             {
                 "id": str(row["id"]),
                 "score": float(row.get("similarity", 1.0)),
+                # Top-level convenience keys
+                "pattern_text": row.get("pattern_text", ""),
+                "outcome_description": row.get("outcome_description", ""),
+                # Nested payload for backward compat (reasoning_service uses p.get('payload', p))
                 "payload": {
-                    "service_type": row["service_type"],
-                    "occupancy_band": row["occupancy_band"],
-                    "day_of_week": row["day_of_week"],
-                    "weather_condition": row["weather_condition"],
-                    "feedback_status": row["feedback_status"],
-                    "pattern_text": row["pattern_text"],
-                    "outcome_description": row["outcome_description"],
+                    "service_type": row.get("service_type"),
+                    "occupancy_band": row.get("occupancy_band"),
+                    "day_of_week": row.get("day_of_week"),
+                    "weather_condition": row.get("weather_condition"),
+                    "feedback_status": row.get("feedback_status"),
+                    "pattern_text": row.get("pattern_text", ""),
+                    "outcome_description": row.get("outcome_description", ""),
                 },
             }
             for row in rows
@@ -188,26 +161,26 @@ class RAGService:
             "feedback_status != 'rejected'",
         ]
         if tenant_id:
-            where_clauses.append("(tenant_id = :tenant_id OR tenant_id IS NULL)")
+            where_clauses.append(
+                "(tenant_id = :tenant_id OR tenant_id IS NULL)"
+            )
             params["tenant_id"] = tenant_id
         where_sql = " AND ".join(where_clauses)
         sql = text(
             f"""
             SELECT id, service_type, occupancy_band, day_of_week,
-                   weather_condition, feedback_status, pattern_text,
-                   outcome_description, NULL AS similarity
+                   weather_condition, feedback_status,
+                   pattern_text, outcome_description,
+                   NULL AS similarity
             FROM fb_patterns
             WHERE {where_sql}
             ORDER BY created_at DESC
             LIMIT :limit
             """
         )
-        result = await self._db.execute(sql, params)
-        return result.mappings().all()
-
-    # ------------------------------------------------------------------
-    # Helper
-    # ------------------------------------------------------------------
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(sql, params)
+            return result.mappings().all()
 
     def build_context_string(
         self,
@@ -215,51 +188,12 @@ class RAGService:
         service_type: str,
         context: Dict[str, Any],
     ) -> str:
-        """Builds a standardised natural-language string for embedding lookup."""
+        """Build a standardised natural-language string for embedding lookup."""
         weather = context.get("weather", {})
         events = context.get("events", [])
-        events_str = ", ".join([e.get("type", "Event") for e in events]) or "None"
-        limit: int = 3,
-    ) -> List[Dict[str, Any]]:
-        """
-        Search fb_patterns in pgvector for semantically similar F&B patterns.
-
-        Returns a list of dicts with keys: id, score (cosine similarity 0–1),
-        payload (JSONB from the patterns table).
-        """
-        embedding = await self.get_embedding(query_text)
-        vec = self._vec_literal(embedding)
-
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                text(
-                    """
-                    SELECT
-                        id,
-                        payload,
-                        1 - (embedding <=> CAST(:vec AS vector)) AS score
-                    FROM fb_patterns
-                    WHERE service_type = :service_type
-                    ORDER BY embedding <=> CAST(:vec AS vector)
-                    LIMIT :limit
-                    """
-                ),
-                {"vec": vec, "service_type": service_type, "limit": limit},
-            )
-            rows = result.fetchall()
-
-        return [
-            {"id": str(row.id), "score": float(row.score), "payload": row.payload}
-            for row in rows
-        ]
-
-    def build_context_string(
-        self, target_date: date, service_type: str, context: Dict[str, Any]
-    ) -> str:
-        """Build a standardised context string for embedding query generation."""
-        weather = context.get("weather", {})
-        events = context.get("events", [])
-        events_str = ", ".join(e.get("type", "Event") for e in events) or "None"
+        events_str = (
+            ", ".join(e.get("type", "Event") for e in events) or "None"
+        )
         return (
             f"Date: {target_date.isoformat()}\n"
             f"Service: {service_type}\n"
